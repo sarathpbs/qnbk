@@ -1,0 +1,204 @@
+[project]
+name = "pyQBnk"
+description = ""
+license = "LicenseRef-Proprietary"
+readme = "README.md"
+package-mode = false
+authors = [
+  { name = "BalajiSeshaSarath.Pokuri", email = "abc@cdf.com" },
+]
+# Set Python constraints for PEP 621
+requires-python = ">=3.10.0,<3.15.0"
+dynamic = [
+  "version",      # updated by 'make build', see note below
+  "dependencies", # managed by poetry for range flexibility
+]
+
+[tool.poetry]
+packages = [{ include = "pyQBnk", from = "src" }]
+# DO NOT CHANGE version PROPERTY. This is managed.
+# Use 'make build' to produce a whl and override this with ARTIFACT_VERSION.
+# poetry-dynamic-versioning will govern it.
+# pre-commit will revert it on commit.
+version = "0.0.0"
+
+[tool.poetry.requires-plugins]
+# requirements.txt export for deps in containers via 'make poetry-export'
+poetry-plugin-export = ">=1.8"
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
+enable = true
+pattern = "default-unprefixed"
+
+[project.scripts]
+# List each executable and the module:method that is the entrypoint for it.
+
+[tool.poetry.dependencies]
+# Set Python constraints for Poetry
+python = ">=3.10,<3.15"
+# Settings model library
+pydantic-settings = "^2"
+# better logging: from loguru import logger; logger.info("something: {}", data)
+loguru = "*"
+streamlit = "*"
+
+[tool.poetry.group.dev.dependencies]
+# type hints checker
+mypy = { version = "*", extras = ["faster-cache"] }
+black = ">=22"
+flake8 = ">=5"
+# this is a lightweight wrapper around flake8 that reads pyproject.toml for config
+flake8-pyproject = ">=1"
+# xml library, used for outputting HTML reports from mypy, etc.
+lxml = "*"
+# lightning fast linter and style checker
+ruff = "*"
+# pre-commit hooks
+pre-commit = "*"
+# documentation generator
+pdoc = "*"
+## types packages
+types-Deprecated = "*"
+types-retry = "*"
+# explicitly added for use in Makefile; no other direct usage permitted.
+PyYAML = "*"
+
+###
+# Below here are rarely-touched settings for the various tools used in this project.
+# N.b. Change the Python versions below when changing tool.poetry.dependencies.python above.
+###
+
+# black config left for editors that use black internally, make and humans use ruff
+[tool.black]
+# 119 = GitHub's wrapping limit
+line-length = 119
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+ dev
+| .poetry
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+namespace_packages = true
+check_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+# Tell mypy to ignore missing imports for the following modules since they don't have type hints
+[[tool.mypy.overrides]]
+module = ["kfp.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  # external
+  "google.cloud.*",
+  "kfp.*",
+  "pydantic.*",
+  "pytest",
+  # internal
+  # none right now
+]
+ignore_missing_imports = true
+
+# Configure coverage.py, which is enabled in the pytest addopts above
+[tool.coverage.run]
+branch = true
+[tool.coverage.report]
+skip_empty = true
+[tool.coverage.html]
+directory = "build/coverage"
+[tool.coverage.xml]
+output = "build/coverage/coverage.xml"
+[tool.coverage.paths]
+source = ["src/tgt_prz_items_with_deals"]
+
+[tool.ruff]
+# Same as Black.
+line-length = 119
+target-version = "py310"
+exclude = [".*", "dist", "__pypackages__", "build", "venv", "dev"]
+
+[tool.ruff.lint]
+select = [
+  "A",     # flake8 built-ins
+  "ANN",   # annotations
+  "ASYNC", # async
+  "B",     # bugbear
+  "COM",   # commas
+  "C4",    # comprehensions
+  # "C90",# mccabe; disabled in template; see to enable: https://docs.astral.sh/ruff/settings/#lintmccabe
+  "D",    # pydocstyle
+  "DOC",  # pydoclint; unavailable without preview, but we want it when it is out of preview
+  "DTZ",  # datetime
+  "E",    # pycodestyle errors
+  "EM",   # error messages
+  "F",    # pyflakes
+  "G",    # logging format
+  "I",    # import sorting
+  "ICN",  # import conventions
+  "LOG",  # logging
+  "N",    # pep8-naming
+  "NPY",  # numpy
+  "PD",   # pandas-vet
+  "PERF", # perflint
+  "PLC",  # pylint conventions
+  "PLE",  # pylint errors
+  "PLW",  # pylint warnings
+  "PT",   # pytest
+  #"PTH", # pathlib; enable to find and remove os.path
+  "Q",   # quotes
+  "RET", # returns
+  "RSE", # raise
+  "RUF", # ruff
+  "SIM", # simplify
+  "TID", # tidy imports
+  "TRY", # try
+  "UP",  # pyupgrade
+  "W",   # pycodestyle warnings
+]
+ignore = [
+  # PD901: Avoid using the generic variable name `df` for DataFrames
+  "PD901",
+  # D203: Incorrect blank link before class
+  "D203",
+  # D213: Multi-line summary second line
+  "D213",
+  # D400: First line should end with a period
+  "D400",
+  # D415: First line should end with a period, question mark, or exclamation point
+  "D415",
+  # COM812: Missing trailing commas; conflicts w/ ruff format, which handles this
+  "COM812",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+  "D",       # pydocstyle, pydoclint
+  "DOC",
+  "T201",    # no print
+  "G004",    # log format
+  "ANN001",  # argument type annotation
+  "ANN201",  # function return type annotation
+  "PLC0415", # import-outside-top-level; required in some tests
+]
+##tool.ruff.lint.per-file-ignores##
+"src/tgt_prz_items_with_deals/pipelines/iwd_write_embeds/*" = [
+  "PLC0415", # import-outside-top-level; required in KFP pipeline definitions and components
+]
+"src/tgt_prz_items_with_deals/pipelines/iwd_training/*" = [
+  "PLC0415", # import-outside-top-level; required in KFP pipeline definitions and components
+]
+
+[build-system]
+requires = [
+  "poetry-core>=2.0.0,<3.0.0",
+  "poetry-dynamic-versioning>=1.0.0,<2.0.0",
+]
+build-backend = "poetry_dynamic_versioning.backend"

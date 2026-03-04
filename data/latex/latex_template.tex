@@ -1,0 +1,44 @@
+% templates/latex_template.tex
+\documentclass[12pt,addpoints]{exam}
+% Basic packages
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\pointformat{}
+
+% Solution toggle (controlled by renderer)
+\newif\ifshowsolutions
+<<<SHOW_SOLUTIONS_FLAG>>>
+
+\ifshowsolutions
+  \printanswers
+\else
+  \noprintanswers
+\fi
+
+% Correct-choice toggle (controlled by renderer)
+\newif\ifshowcorrect
+<<<SHOW_CORRECT_FLAG>>>
+
+\ifshowcorrect
+  \newcommand{\MyCorrectChoice}{\CorrectChoice}
+\else
+  \newcommand{\MyCorrectChoice}{\choice}
+\fi
+
+\title{<<<TITLE>>>}
+\date{<<<DATE>>}
+\begin{document}
+\maketitle
+
+% Questions block injected here
+\begin{questions}
+<<<QUESTIONS_BLOCK>>>
+\end{questions}
+
+% Optionally render an answer key block at the end
+<<<ANSWER_KEY_BLOCK>>>
+
+\end{document}
