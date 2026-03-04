@@ -18,7 +18,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 PDF_ENGINE = "pdflatex"  # change if you prefer xelatex or lualatex
 
 # Extract options in the form OptionA: text or OptionA - text or OptionA text
-opt_pattern = re.compile(r"^\s*Option([A-D])\s*(.+)", re.M)
+opt_pattern = re.compile(r"^\s*Option([A-D])\s*[:\-]?\s*(.+)", re.M)
 
 
 # ---------------------------
@@ -59,7 +59,7 @@ def read_question_file(path: Path):
     yaml_solution = meta.pop("solution", None)
     solution_text = extracted_solution if extracted_solution and extracted_solution.strip() else (yaml_solution or "")
 
-    opt_pattern = re.compile(r"^\s*Option([A-D])\s*[:\-]?\s*(.+)", re.M)
+    # opt_pattern = re.compile(r"^\s*Option([A-D])\s*[:\-]?\s*(.+)", re.M)
     options = {}
     for m_opt in opt_pattern.finditer(body_without_solution):
         letter = m_opt.group(1).upper()
@@ -151,7 +151,7 @@ def question_to_latex(q, include_solution=True, include_key=True):
 
     options = q.get("options", {}) or {}
     if not options:
-        opt_pattern = re.compile(r"^\s*([A-D])[\.\)]\s*(.+)", re.M)
+        # opt_pattern = re.compile(r"^\s*([A-D])[\.\)]\s*(.+)", re.M)
         for m in opt_pattern.finditer(body_md):
             options[m.group(1)] = m.group(2).strip()
 
@@ -268,7 +268,6 @@ with st.sidebar:
     include_answer_key_inline = st.checkbox(
         "Mark correct choice inline (shows correct choice)", value=default_include_key_inline
     )
-    export_with_key_at_end = st.checkbox("Generate answer key at end of document", value=default_answer_key_at_end)
 
     show_correct_inline = st.checkbox("Show correct choice inline (Instructor-style)", value=(mode == "Instructor"))
 
@@ -344,7 +343,7 @@ else:
         question_fragments = []
         for q in chosen:
             if not q.get("options"):
-                opt_pattern = re.compile(r"^\s*Option([A-D])\s*[:\-]?\s*(.+)", re.M)
+                # opt_pattern = re.compile(r"^\s*Option([A-D])\s*[:\-]?\s*(.+)", re.M)
                 opts = {}
                 for m in opt_pattern.finditer(q["body"]):
                     opts[m.group(1)] = m.group(2).strip()
@@ -358,7 +357,7 @@ else:
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
 
         answer_key_rows = []
-        if (not include_answer_key_inline) and export_with_key_at_end:
+        if (not include_answer_key_inline):
             for i, q in enumerate(chosen, start=1):
                 answer_letter = (q["meta"].get("answer") or "").strip().upper()
                 ans_text = q.get("options", {}).get(answer_letter, "")
