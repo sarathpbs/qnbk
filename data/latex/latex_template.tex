@@ -30,20 +30,19 @@
 \renewcommand{\labelenumii}{\Alph{enumii}.}
 
 % ----------------------------------------------------------
-
+% TODO
 % Solution toggle (controlled by renderer)
 \newif\ifshowsolution
-%%% the renderer will replace the token below with exactly \showsolutiontrue or \showsolutionfalse
+%% renderer will replace <<<SHOW_SOLUTIONS_FLAG>>> with exactly \showsolutiontrue or \showsolutionfalse
 <<<SHOW_SOLUTIONS_FLAG>>>
 
 \ifshowsolution
-  % when true: define a normal solution environment that prints its contents
+  % when true: define solution environment that prints its contents with a heading
   \newenvironment{solution}{\par\smallskip\noindent\textbf{Solution.}\quad}{\par\smallskip}
 \else
   % when false: redefine solution to be a no-op (completely hide contents)
   \newenvironment{solution}{}{}
 \fi
-
 
 \title{<<<TITLE>>>}
 \date{<<<DATE>>>}

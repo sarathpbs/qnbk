@@ -139,7 +139,7 @@ def md_to_latex_minimal(md_text: str):
     return t
 
 
-def question_to_latex(q, include_key=True):
+def question_to_latex(q):
     """
     Render one question to LaTeX.
     - Chooses horizontal options layout when short and simple, else vertical enumerate.
@@ -188,8 +188,6 @@ def question_to_latex(q, include_key=True):
         opt_args = []
         for idx, letter in enumerate(opt_order):
             body = opt_texts[idx]
-            if include_key and letter.upper() == (correct or "").upper():
-                body = "\\MyCorrectMark{" + body + "}"
             # ensure each argument is TeX safe (already escaped)
             opt_args.append(body)
         # use the OptionRow macro: pass four parameters
@@ -201,11 +199,7 @@ def question_to_latex(q, include_key=True):
         s.append("\\begin{enumerate}\n")
         for idx, letter in enumerate(opt_order):
             body = opt_texts[idx]
-            if include_key and letter.upper() == (correct or "").upper():
-                # wrap correct option text
-                s.append("\\item " + "\\MyCorrectMark{" + body + "}\n")
-            else:
-                s.append("\\item " + body + "\n")
+            s.append("\\item " + body + "\n")
         s.append("\\end{enumerate}\n")
 
     # Solution (always included in .tex; printing controlled by template)
@@ -219,26 +213,14 @@ def question_to_latex(q, include_key=True):
 
     return "\n".join(s)
 
-def render_latex_template_simple(template_path: Path, title: str, date_str: str, questions_tex: str,
-                                 show_solutions: bool, answer_key_rows=None) -> str:
-    """
-    Render template by replacing strict tokens.
-    - show_solutions: True -> inject \showsolutiontrue ; False -> inject \showsolutionfalse
-    """
+def render_latex_template_simple(template_path: Path, title: str, date_str: str,
+                                 questions_tex: str, show_solutions: bool, answer_block=None) -> str:
     tpl = template_path.read_text(encoding="utf-8")
 
-    # exact tokens expected by the template: \showsolutiontrue / \showsolutionfalse
     show_solutions_line = r"\showsolutiontrue" if show_solutions else r"\showsolutionfalse"
 
-    # Build answer key block if provided
-    answer_block = ""
-    if answer_key_rows:
-        rows = ["\\newpage", "\\section*{Answer Key}", "\\begin{tabular}{ll}", "Question & Answer \\\\ \\hline"]
-        for r in answer_key_rows:
-            rows.append(f"{r['number']} & {r['answer']} \\\\")
-        rows.append("\\end{tabular}")
-        answer_block = "\n".join(rows)
-
+    # TODO: Solutions_flag does not work!
+    #  TODO: fix the template to conditionally show/hide solutions based on this flag. For now, it always includes solutions in the .tex and relies on the template to hide them if show_solutions is False.
     out = tpl.replace("<<<SHOW_SOLUTIONS_FLAG>>>", show_solutions_line)
     out = out.replace("<<<TITLE>>>", escape_latex(title))
     out = out.replace("<<<DATE>>>", escape_latex(date_str))
@@ -278,28 +260,9 @@ with st.sidebar:
 
     selected_topics = st.multiselect("Topic(s)", all_topics, default=all_topics)
     selected_difficulties = st.multiselect("Difficulty level(s)", all_difficulties, default=all_difficulties)
-    preview_mode = st.checkbox("Show preview before selecting", value=True)
 
-    # Mode selector
-    mode = st.radio(
-        "Mode",
-        ["Student", "Instructor"],
-        index=0,
-        help="Instructor mode shows solutions and correct choices by default.",
-    )
-
-    if mode == "Instructor":
-        default_include_solutions = True
-        default_include_key_inline = True
-        default_answer_key_at_end = True
-    else:
-        default_include_solutions = False
-        default_include_key_inline = False
-        default_answer_key_at_end = False
-
-    include_solutions = st.checkbox("Include solutions in compiled PDF", value=default_include_solutions)
-
-    show_correct_inline = st.checkbox("Show correct choice inline (Instructor-style)", value=(mode == "Instructor"))
+    include_solutions = st.checkbox("Include solutions in compiled PDF (Answer key at end)",
+                                    value=False)
 
     compile_pdf = st.checkbox("Compile to PDF (requires pdflatex installed)", value=True)
 
@@ -308,7 +271,8 @@ with st.sidebar:
     st.write(str(OUTPUT_DIR.resolve()))
     st.write("---")
     st.write(
-        "Tip: put question files under `questions/` with YAML frontmatter: topic, difficulty, answer (solution goes in the body)."
+        f"Tip: put question files under `{QUESTIONS_DIR}` with YAML frontmatter: topic, difficulty, answer (solution goes "
+        f"in the body)."
     )
 
 # Filter questions
@@ -379,20 +343,23 @@ else:
                     opts[m.group(1)] = m.group(2).strip()
                 q["options"] = opts
             question_fragments.append(
-                question_to_latex(q, include_key=False)
+                question_to_latex(q)
             )
 
         # questions_tex now should be a sequence of \item ... entries
         questions_tex = "\n\n".join(question_fragments)
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
 
-        answer_key_rows = []
-        for i, q in enumerate(chosen, start=1):
-            answer_letter = (q["meta"].get("answer") or "").strip().upper()
-            ans_text = q.get("options", {}).get(answer_letter, "")
-            display = f"{answer_letter} — {ans_text}" if ans_text else f"{answer_letter}"
-            display_escaped = escape_latex(display)
-            answer_key_rows.append({"number": i, "answer": display_escaped})
+        answer_block = ''
+        if include_solutions:
+            answer_key_rows = []
+            for i, q in enumerate(chosen, start=1):
+                answer_letter = (q["meta"].get("answer") or "").strip().upper()
+                ans_text = q.get("options", {}).get(answer_letter, "")
+                display = f"{answer_letter} — {ans_text}" if ans_text else f"{answer_letter}"
+                display_escaped = escape_latex(display)
+                answer_key_rows.append({"number": i, "answer": display_escaped})
+            answer_block = "\pagebreak" + "\n".join([f"{row['number']}:{row['answer']}\n" for row in answer_key_rows])
 
         template_path = TEMPLATE_DIR / TEMPLATE_NAME
         title = "Question Bank Export"
@@ -403,7 +370,7 @@ else:
             date_str=date_str,
             questions_tex=questions_tex,
             show_solutions=include_solutions,
-            answer_key_rows=answer_key_rows,
+            answer_block=answer_block,
         )
 
         tex_path = tex_name
