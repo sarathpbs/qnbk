@@ -1,44 +1,69 @@
-% templates/latex_template.tex
-\documentclass[12pt,addpoints]{exam}
-% Basic packages
-\usepackage{amsmath,amssymb}
-\usepackage{geometry}
-\geometry{margin=1in}
-\usepackage{hyperref}
-\usepackage{enumitem}
-\pointformat{}
+\documentclass[12pt]{article}
 
-% Solution toggle (controlled by renderer)
+% =========================
+% Solution toggle
+% =========================
 \newif\ifshowsolutions
-<<<SHOW_SOLUTIONS_FLAG>>>
+\showsolutionstrue      % <-- Instructor mode
+% \showsolutionsfalse   % <-- Student mode
 
-\ifshowsolutions
-  \printanswers
-\else
-  \noprintanswers
-\fi
+\usepackage[margin=1in]{geometry}
 
-% Correct-choice toggle (controlled by renderer)
-\newif\ifshowcorrect
-<<<SHOW_CORRECT_FLAG>>>
-
-\ifshowcorrect
-  \newcommand{\MyCorrectChoice}{\CorrectChoice}
-\else
-  \newcommand{\MyCorrectChoice}{\choice}
-\fi
-
-\title{<<<TITLE>>>}
-\date{<<<DATE>>}
 \begin{document}
-\maketitle
 
-% Questions block injected here
-\begin{questions}
-<<<QUESTIONS_BLOCK>>>
-\end{questions}
+\section*{Question Set}
 
-% Optionally render an answer key block at the end
-<<<ANSWER_KEY_BLOCK>>>
+% =========================
+% Question macro
+% =========================
+\newcounter{question}
+\newcommand{\question}[1]{
+    \stepcounter{question}
+    \bigskip
+    \noindent
+    \textbf{Question \thequestion.}
+    #1
+    \par
+}
+
+% =========================
+% Choices environment
+% =========================
+\newenvironment{choices}{
+    \begin{itemize}
+}{
+    \end{itemize}
+}
+
+% Normal choice
+\newcommand{\choice}[1]{
+    \item #1
+}
+
+% Correct choice (only marked in instructor mode)
+\newcommand{\correctchoice}[1]{
+    \ifshowsolutions
+        \item \textbf{#1}
+    \else
+        \item #1
+    \fi
+}
+
+% =========================
+% Solution macro
+% =========================
+\newcommand{\solution}[1]{
+    \ifshowsolutions
+        \medskip
+        \noindent\textbf{Solution:} #1
+        \par
+    \fi
+}
+
+% =========================
+% Questions inserted here
+% =========================
+
+%% QUESTIONS GO HERE
 
 \end{document}

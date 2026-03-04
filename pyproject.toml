@@ -4,9 +4,7 @@ description = ""
 license = "LicenseRef-Proprietary"
 readme = "README.md"
 package-mode = false
-authors = [
-  { name = "BalajiSeshaSarath.Pokuri", email = "abc@cdf.com" },
-]
+authors = [{ name = "BalajiSeshaSarath.Pokuri", email = "abc@cdf.com" }]
 # Set Python constraints for PEP 621
 requires-python = ">=3.10.0,<3.15.0"
 dynamic = [
@@ -15,7 +13,7 @@ dynamic = [
 ]
 
 [tool.poetry]
-packages = [{ include = "pyQBnk", from = "src" }]
+packages = [{ include = "qnbk", from = "src" }]
 # DO NOT CHANGE version PROPERTY. This is managed.
 # Use 'make build' to produce a whl and override this with ARTIFACT_VERSION.
 # poetry-dynamic-versioning will govern it.
