@@ -1,69 +1,60 @@
+% templates/latex_template.tex
 \documentclass[12pt]{article}
 
-% =========================
-% Solution toggle
-% =========================
-\newif\ifshowsolutions
-\showsolutionstrue      % <-- Instructor mode
-% \showsolutionsfalse   % <-- Student mode
+% Basic packages
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
 
-\usepackage[margin=1in]{geometry}
+% ----- ENUMERATE LABEL SETTINGS (no enumitem needed) -----
+% First level: 1., 2., 3., ...
+\renewcommand{\labelenumi}{\arabic{enumi}.}
+
+% Second level: A., B., C., ...
+\renewcommand{\labelenumii}{\Alph{enumii}.}
+
+% ----------------------------------------------------------
+
+% Solution toggle
+\newif\ifshowsolutions
+<<<SHOW_SOLUTIONS_FLAG>>>
+
+\newenvironment{solution}
+{
+  \ifshowsolutions
+    \par\noindent\textbf{Solution: }\par
+  \fi
+}
+{
+  \ifshowsolutions
+    \par
+  \fi
+}
+
+% Correct-choice toggle
+\newif\ifshowcorrect
+<<<SHOW_CORRECT_FLAG>>>
+
+\ifshowcorrect
+  \newcommand{\MyCorrectMark}[1]{\textbf{#1}}
+\else
+  \newcommand{\MyCorrectMark}[1]{#1}
+\fi
+
+\title{<<<TITLE>>>}
+\date{<<<DATE>>>}
 
 \begin{document}
+\maketitle
 
-\section*{Question Set}
+\begin{enumerate}
+<<<QUESTIONS_BLOCK>>>
+\end{enumerate}
 
-% =========================
-% Question macro
-% =========================
-\newcounter{question}
-\newcommand{\question}[1]{
-    \stepcounter{question}
-    \bigskip
-    \noindent
-    \textbf{Question \thequestion.}
-    #1
-    \par
-}
-
-% =========================
-% Choices environment
-% =========================
-\newenvironment{choices}{
-    \begin{itemize}
-}{
-    \end{itemize}
-}
-
-% Normal choice
-\newcommand{\choice}[1]{
-    \item #1
-}
-
-% Correct choice (only marked in instructor mode)
-\newcommand{\correctchoice}[1]{
-    \ifshowsolutions
-        \item \textbf{#1}
-    \else
-        \item #1
-    \fi
-}
-
-% =========================
-% Solution macro
-% =========================
-\newcommand{\solution}[1]{
-    \ifshowsolutions
-        \medskip
-        \noindent\textbf{Solution:} #1
-        \par
-    \fi
-}
-
-% =========================
-% Questions inserted here
-% =========================
-
-%% QUESTIONS GO HERE
+<<<ANSWER_KEY_BLOCK>>>
 
 \end{document}

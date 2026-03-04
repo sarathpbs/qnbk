@@ -159,7 +159,7 @@ def question_to_latex(q, include_solution=True, include_key=True):
     # Build LaTeX for question as an \item with a nested enumerate for options
     s = []
     s.append("\\item " + question_text)
-    s.append("\\begin{enumerate}[label=\\Alph*.]")
+    s.append("\\begin{enumerate}")
     correct = (meta.get("answer") or "").strip().upper()
     for o in opt_order:
         text = options.get(o, "")
@@ -193,7 +193,7 @@ def render_latex_template_simple(
     answer_key_rows=None,
 ) -> str:
     tpl = template_path.read_text(encoding="utf-8")
-    show_solutions_line = r"\showsolutiontrue" if show_solutions else r"\showsolutionfalse"
+    show_solutions_line = r"\showsolutionstrue" if show_solutions else r"\showsolutionsfalse"
     show_correct_line = r"\showcorrecttrue" if show_correct else r"\showcorrectfalse"
 
     answer_block = ""
