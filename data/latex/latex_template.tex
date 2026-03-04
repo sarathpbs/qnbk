@@ -9,7 +9,19 @@
 \usepackage{lmodern}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{tabularx}    % flexible-width table for horizontal options
+\usepackage{array}
 
+% A column type for balanced columns (uses tabularx)
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+% Helper macro to render 4 options horizontally with labels
+% Usage: \OptionRow{A-text}{B-text}{C-text}{D-text}
+\newcommand{\OptionRow}[4]{%
+  \begin{tabularx}{\textwidth}{@{}Y Y Y Y@{}}%
+    \textbf{A.}~#1 & \textbf{B.}~#2 & \textbf{C.}~#3 & \textbf{D.}~#4%
+  \end{tabularx}%
+}
 % ----- ENUMERATE LABEL SETTINGS (no enumitem needed) -----
 % First level: 1., 2., 3., ...
 \renewcommand{\labelenumi}{\arabic{enumi}.}
@@ -19,31 +31,19 @@
 
 % ----------------------------------------------------------
 
-% Solution toggle
-\newif\ifshowsolutions
+% Solution toggle (controlled by renderer)
+\newif\ifshowsolution
+%%% the renderer will replace the token below with exactly \showsolutiontrue or \showsolutionfalse
 <<<SHOW_SOLUTIONS_FLAG>>>
 
-\newenvironment{solution}
-{
-  \ifshowsolutions
-    \par\noindent\textbf{Solution: }\par
-  \fi
-}
-{
-  \ifshowsolutions
-    \par
-  \fi
-}
-
-% Correct-choice toggle
-\newif\ifshowcorrect
-<<<SHOW_CORRECT_FLAG>>>
-
-\ifshowcorrect
-  \newcommand{\MyCorrectMark}[1]{\textbf{#1}}
+\ifshowsolution
+  % when true: define a normal solution environment that prints its contents
+  \newenvironment{solution}{\par\smallskip\noindent\textbf{Solution.}\quad}{\par\smallskip}
 \else
-  \newcommand{\MyCorrectMark}[1]{#1}
+  % when false: redefine solution to be a no-op (completely hide contents)
+  \newenvironment{solution}{}{}
 \fi
+
 
 \title{<<<TITLE>>>}
 \date{<<<DATE>>>}
