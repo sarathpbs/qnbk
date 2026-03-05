@@ -4,6 +4,7 @@
 % Basic packages
 \usepackage{amsmath,amssymb}
 \usepackage{geometry}
+\usepackage{verbatim}    % for comment environment
 \geometry{margin=1in}
 \usepackage{hyperref}
 \usepackage{lmodern}
@@ -36,12 +37,17 @@
 %% renderer will replace <<<SHOW_SOLUTIONS_FLAG>>> with exactly \showsolutiontrue or \showsolutionfalse
 <<<SHOW_SOLUTIONS_FLAG>>>
 
+% Define solution environment based on showsolution flag
 \ifshowsolution
-  % when true: define solution environment that prints its contents with a heading
-  \newenvironment{solution}{\par\smallskip\noindent\textbf{Solution.}\quad}{\par\smallskip}
+  \newenvironment{solution}%
+    {\par\smallskip\noindent\textbf{Solution.}\quad}%
+    {\par\smallskip}%
 \else
-  % when false: redefine solution to be a no-op (completely hide contents)
-  \newenvironment{solution}{}{}
+  % When showsolution is false, we need to read and discard the environment content
+  % Using a simple trick: ignore everything until we hit \end{solution}
+  \newenvironment{solution}%
+    {\comment}%
+    {\endcomment}%
 \fi
 
 \title{<<<TITLE>>>}
