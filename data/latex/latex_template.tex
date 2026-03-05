@@ -3,7 +3,7 @@
 
 % Basic packages
 \usepackage{amsmath,amssymb}
-\usepackage{geometry}
+\usepackage[left=0.25cm, right=0.25cm, top=0.5cm, bottom=0.5cm]{geometry}
 \usepackage{verbatim}    % for comment environment
 \geometry{margin=1in}
 \usepackage{hyperref}
@@ -50,12 +50,19 @@
     {\endcomment}%
 \fi
 
-\title{<<<TITLE>>>}
-\date{<<<DATE>>>}
+%
+\setlength{\textheight}{9.75in}
 
 \begin{document}
-\maketitle
+% \maketitle
 
+\Large
+
+\noindent{\bf <<<TITLE>>>\hfill <<<DATE>>>}
+
+
+\medskip\hrule
+\normalsize
 \begin{enumerate}
 <<<QUESTIONS_BLOCK>>>
 \end{enumerate}
