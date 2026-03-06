@@ -141,7 +141,7 @@ def escape_latex(s: str) -> str:
     replacements = {}
     token_idx = 0
 
-    def _repl(m):
+    def _repl(m):       # noqa: ANN001
         nonlocal token_idx
         token = f"@@MATH{token_idx}@@"
         replacements[token] = m.group(0)
@@ -157,6 +157,7 @@ def escape_latex(s: str) -> str:
 
 
 def md_to_latex_minimal(md_text: str) -> str:
+    """Convert a subset of Markdown syntax to LaTeX."""
     t = md_text
     t = re.sub(r"^\s*# (.+)$", r"\\section*{\1}", t, flags=re.M)
     t = re.sub(r"^\s*## (.+)$", r"\\subsection*{\1}", t, flags=re.M)
@@ -164,7 +165,7 @@ def md_to_latex_minimal(md_text: str) -> str:
     t = re.sub(r"\*(.+?)\*", r"\\emph{\1}", t)
     t = re.sub(r"`(.+?)`", r"\\texttt{\1}", t)
     t = t.replace("  \n", "\\\\\n")
-    return t
+    return t    # noqa: RET504
 
 
 def question_to_latex(q: dict) -> str:
@@ -172,8 +173,6 @@ def question_to_latex(q: dict) -> str:
 
     Chooses horizontal options layout when short and simple, else vertical enumerate.
     """
-    meta = q["meta"]
-    body_md = q["body"]
     question_text = q["question_text"]
     question_text = md_to_latex_minimal(question_text)
     question_text = escape_latex(question_text)
@@ -267,6 +266,9 @@ def compile_latex(tex_path: Path, workdir: Path) -> tuple[bool, Path | Exception
 # ---------------------------
 st.set_page_config(page_title="Question Bank", layout="wide")
 st.title("Question Bank")
+
+QUESTIONS_DIR = st.text_input("Questions directory (relative to project root)", value=str(QUESTIONS_DIR))
+QUESTIONS_DIR = Path(QUESTIONS_DIR)
 
 if not QUESTIONS_DIR.exists():
     st.error(f"Questions directory {QUESTIONS_DIR} not found. Create it and add .md files.")
