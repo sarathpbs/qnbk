@@ -95,6 +95,11 @@ def main():
     """The main routine
     :return:
     """
+    # ---------------------------
+    # Streamlit UI
+    # ---------------------------
+    st.set_page_config(page_title="Question Bank Creator", layout="wide")
+
     st.title("Question File Creator — Question Bank format")
 
     output_dir = st.text_input("Output directory (relative to project root)", value=str(QUESTIONS_DIR))

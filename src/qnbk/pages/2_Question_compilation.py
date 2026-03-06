@@ -141,7 +141,7 @@ def escape_latex(s: str) -> str:
     replacements = {}
     token_idx = 0
 
-    def _repl(m):       # noqa: ANN001
+    def _repl(m):  # noqa: ANN001
         nonlocal token_idx
         token = f"@@MATH{token_idx}@@"
         replacements[token] = m.group(0)
@@ -165,7 +165,7 @@ def md_to_latex_minimal(md_text: str) -> str:
     t = re.sub(r"\*(.+?)\*", r"\\emph{\1}", t)
     t = re.sub(r"`(.+?)`", r"\\texttt{\1}", t)
     t = t.replace("  \n", "\\\\\n")
-    return t    # noqa: RET504
+    return t  # noqa: RET504
 
 
 def question_to_latex(q: dict) -> str:
@@ -265,7 +265,7 @@ def compile_latex(tex_path: Path, workdir: Path) -> tuple[bool, Path | Exception
 # Streamlit UI
 # ---------------------------
 st.set_page_config(page_title="Question Bank", layout="wide")
-st.title("Question Bank")
+st.title("Question Extractor")
 
 QUESTIONS_DIR = st.text_input("Questions directory (relative to project root)", value=str(QUESTIONS_DIR))
 QUESTIONS_DIR = Path(QUESTIONS_DIR)
