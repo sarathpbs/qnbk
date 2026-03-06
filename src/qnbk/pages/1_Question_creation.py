@@ -6,7 +6,9 @@ from pathlib import Path
 import streamlit as st
 from loguru import logger
 
-QUESTIONS_DIR = Path("data/mathematics")
+from qnbk.utils import read_question_file
+
+QUESTIONS_DIR = Path("questions_output")
 
 
 def ensure_output_dir(out_dir: Path) -> None:
@@ -51,6 +53,7 @@ def build_question_dict(
         "answer": correct_option_index or "",
         "prev_year": prev_year or "",
     }
+    logger.info(f"Metadata before adding extra fields: {metadata}")
     # include any extra metadata fields
     if extra_metadata:
         metadata.update(extra_metadata)
@@ -79,7 +82,7 @@ def write_md_file(qdict: dict, filename: str) -> None:
             f.write(f"{k}: {v}\n")
         f.write("---\n\n\n")
         # write question
-        f.write(qdict["body"]["question"] + "\n")
+        f.write(qdict["body"]["question"] + "\n\n")
         # write options if they exist
         if qdict["body"]["options"]:
             for opt_label, opt in zip(["A", "B", "C", "D"], qdict["body"]["options"], strict=False):
@@ -99,36 +102,73 @@ def main():
     # Streamlit UI
     # ---------------------------
     st.set_page_config(page_title="Question Bank Creator", layout="wide")
+    st.title("Question File Creator/Editor — Question Bank format")
 
-    st.title("Question File Creator — Question Bank format")
+    st.header("Load and Edit")
+    file_path = st.text_input(
+        "Enter a file path on server (to overwrite)",
+        value=QUESTIONS_DIR / "q_00001.md",
+        placeholder="/path/to/question.md",
+    )
+    cols = st.columns(2)
+    with cols[0]:
+        if_load_and_edit = st.button("Load and upload to edit")
+    with cols[1]:
+        if_clear_load = st.button("Clear loaded content")
 
-    output_dir = st.text_input("Output directory (relative to project root)", value=str(QUESTIONS_DIR))
+    default_dict = {}
+
+    if if_load_and_edit:
+        try:
+            raw = read_question_file(Path(file_path), QUESTIONS_DIR)
+            default_dict["output_dir"] = str(raw.get("path", "").parent).replace(raw.get("meta", {}).get("topic"), "")
+            default_dict["topic"] = raw.get("meta", {}).get("topic", "")
+            default_dict["difficulty"] = raw.get("meta", {}).get("difficulty", "")
+            default_dict["qid"] = raw.get("filename", "").split(".")[0].split("_")[1]
+            default_dict["prev_year"] = raw.get("meta", {}).get("prev_year", "")
+            extra_meta = {
+                k: v for k, v in raw.get("meta", {}).items() if k not in ["topic", "difficulty", "prev_year", "answer"]
+            }
+            default_dict["extra_meta_text"] = json.dumps(extra_meta, indent=2) if extra_meta else ""
+            default_dict["question_text"] = raw.get("question_text", "")
+            default_dict["options"] = list(raw.get("options", {}).values()) if raw.get("options") else [""] * 4
+            default_dict["solution_text"] = raw.get("solution", "")
+        except Exception as e:
+            raw = {}
+            st.error(f"Could not read {file_path}: {e}")
+    if if_clear_load:
+        raw = {}
+        if_load_and_edit = False
+
+    output_dir = st.text_input(
+        "Output directory (relative to project root)", value=default_dict.get("output_dir", QUESTIONS_DIR)
+    )
 
     with st.form("qform"):
         st.subheader("Question metadata")
-        # topic, difficulty, prev_year,
-        # question,
-        # options, solution_text, correct_option_index,
-        # extra_metadata
-        topic = st.text_input("Topic (e.g. algebra, geometry)")
+        topic = st.text_input("Topic (e.g. algebra, geometry)", value=default_dict.get("topic", ""))
         topic = topic.strip().capitalize() if topic else ""
         output_dir = Path(output_dir.strip()) / topic
+        logger.info(f"Output directory set to: {output_dir}")
         difficulty = st.selectbox("Difficulty", ["", "Easy", "Medium", "Hard"])
-        qid = st.text_input("Question ID (leave blank to auto-generate)")
-        prev_year = st.text_input("Years in which this appeared (optional)", help="e.g. 2023")
+        qid = st.text_input("Question ID (leave blank to auto-generate)", value=default_dict.get("qid"))
+        prev_year = st.text_input(
+            "Years in which this appeared (optional)", help="e.g. 2023", value=default_dict.get("prev_year")
+        )
         extra_meta_text = st.text_area(
             "Extra metadata (as JSON) — optional",
             placeholder='{"learning_objective":"LO1", "chapter": 3}',
             height=80,
+            value=default_dict.get("extra_meta_text", ""),
         )
 
         st.subheader("Question content")
-        question_text = st.text_area("Question text", height=200)
+        question_text = st.text_area("Question text", height=200, value=default_dict.get("question_text", ""))
         st.markdown("**Options (leave some blank for open-response)**")
         # cols = st.columns(4)
         options = []
         for i in range(4):
-            opt = st.text_input(f"Option {chr(65 + i)}")
+            opt = st.text_input(f"Option {chr(65 + i)}", value=default_dict.get("options", [""] * 4)[i])
             options.append(opt if opt.strip() else None)
         # remove trailing None options
         options = [o for o in options if o is not None]
@@ -143,9 +183,10 @@ def main():
         if correct_label:
             correct_option_index = correct_label.split(".")[0].strip()  # e.g. "A"
 
-        solution_text = st.text_area("Solution", height=200)
+        solution_text = st.text_area("Solution", height=200, value=default_dict.get("solution_text", ""))
 
-        generated_file_name = f"q_{qid.strip() if qid.strip() else generate_id(output_dir)}.md"
+        generated_file_name = f"q_{qid.strip() if qid else generate_id(output_dir)}.md"
+        logger.info(f"Generated file name: {generated_file_name}")
 
         st.subheader("Output options")
         filename_override = st.text_input(
@@ -153,6 +194,7 @@ def main():
             help="Generated from the id and the folder provided",
             value=generated_file_name,
         )
+        logger.info(f"Filename override: {filename_override}")
 
         submit = st.form_submit_button("Create question file")
 
@@ -181,6 +223,7 @@ def main():
 
         # write file
         try:
+            logger.info(f"Writing {qdict} to file: {filepath}")
             write_md_file(qdict, filepath)
         except Exception as e:
             st.error(f"Error writing file: {e}")
