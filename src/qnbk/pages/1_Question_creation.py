@@ -16,12 +16,14 @@ def ensure_output_dir(out_dir: Path) -> None:
     os.makedirs(out_dir, exist_ok=True)
 
 
-def generate_id(directory: Path) -> str:
+def generate_id(directory: Path, qid: str) -> str:
     """Find the latest question number in the directory and generate a new ID by incrementing it.
     If no questions exist, start with 001.
     :param directory:
     :return:
     """
+    if qid is not None and qid.strip():
+        return f"{int(qid.strip()):05d}"
     existing_ids = []
     for file in directory.glob("q_*.md"):
         try:
@@ -197,7 +199,7 @@ def main():
 
         solution_text = st.text_area("Solution", height=200, value=default_dict.get("solution_text", ""))
 
-        generated_file_name = f"q_{qid.strip() if qid else generate_id(output_dir)}.md"
+        generated_file_name = f"q_{generate_id(output_dir, qid)}.md"
 
         st.subheader("Output options")
         filename_override = st.text_input(
