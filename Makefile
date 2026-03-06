@@ -105,7 +105,7 @@ PDOC ?= $(POETRY) run pdoc
 ###
 .PHONY: run
 run:  ## Run the streamlit app
-	$(POETRY) run streamlit run src/pyQBnk/welcome.py
+	$(POETRY) run streamlit run src/qnbk/welcome.py
 
 ##@ Utility
 
