@@ -204,7 +204,7 @@ questions = load_all_questions(QUESTIONS_DIR)
 # Build filters and sidebar
 with st.sidebar:
     st.header("Filters & Export options")
-    all_topics = sorted({q["meta"].get("topic", "Uncategorized") for q in questions})
+    all_topics = sorted({q["meta"].get("topic") or "Uncategorized" for q in questions})
     all_difficulties = sorted({q["meta"].get("difficulty", "Unknown") for q in questions})
 
     selected_topics = st.multiselect("Topic(s)", all_topics, default=all_topics)
@@ -259,12 +259,13 @@ for idx, q in enumerate(filtered):
 
     with row_cols[2]:
         st.write(f"Topic: {q['meta'].get('topic')}  \nDiff: {q['meta'].get('difficulty')}")
-        ans_letter = (q["meta"].get("answer") or "").strip().upper()
-        ans_text = q.get("options", {}).get(ans_letter, "")
+        ans_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
+        ans_text = [q.get("options", {}).get(ans_letter, "").strip() for ans_letter in ans_letters]
+        ans_text = ",".join(ans_text)
         if len(ans_text) < 12:
-            st.write(f"Answer: **{ans_letter}** — {ans_text}")
+            st.write(f"Answer: **{ans_letters}** — {ans_text}")
         else:
-            st.write(f"Answer: **{ans_letter}**")
+            st.write(f"Answer: **{ans_letters}**")
         st.write(f"Path: {q.get('relpath', '-')}")
 
 # Build list of chosen question objects
@@ -292,9 +293,10 @@ else:
         if include_solutions:
             answer_key_rows = []
             for i, q in enumerate(chosen, start=1):
-                answer_letter = (q["meta"].get("answer") or "").strip().upper()
-                ans_text = q.get("options", {}).get(answer_letter, "")
-                display = f"{answer_letter} — {ans_text}" if ans_text else f"{answer_letter}"
+                answer_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
+                ans_text = [q.get("options", {}).get(ans_letter, "").strip() for ans_letter in answer_letters]
+                ans_text = ",".join(ans_text)
+                display = f"{answer_letters} — {ans_text}" if ans_text else f"{answer_letters}"
                 display_escaped = escape_latex(display)
                 answer_key_rows.append({"number": i, "answer": display_escaped})
             answer_block = r"\pagebreak" + "\n".join([f"{row['number']}:{row['answer']}\n" for row in answer_key_rows])
