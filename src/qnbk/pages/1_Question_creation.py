@@ -6,8 +6,6 @@ from pathlib import Path
 import streamlit as st
 from loguru import logger
 
-from qnbk.utils import read_question_file
-
 QUESTIONS_DIR = Path("questions_output")
 
 
@@ -16,14 +14,12 @@ def ensure_output_dir(out_dir: Path) -> None:
     os.makedirs(out_dir, exist_ok=True)
 
 
-def generate_id(directory: Path, qid: str) -> str:
+def generate_id(directory: Path) -> str:
     """Find the latest question number in the directory and generate a new ID by incrementing it.
     If no questions exist, start with 001.
     :param directory:
     :return:
     """
-    if qid is not None and qid.strip():
-        return f"{int(qid.strip()):05d}"
     existing_ids = []
     for file in directory.glob("q_*.md"):
         try:
@@ -62,7 +58,7 @@ def build_question_dict(
     # Build body which contains question text, options, and the solution (moved here)
     body = {
         "question": question,
-        "options": options if options else None,
+        "options": options if sum([1 if o else 0 for o in options]) == 4 else None,
         # Store the 'solution' inside body. This matches your earlier change requests.
         "solution": (solution_text if solution_text and solution_text.strip() else None),
     }
@@ -104,102 +100,48 @@ def main():
     # ---------------------------
     st.set_page_config(page_title="Question Bank Creator", layout="wide")
     st.title("Question File Creator/Editor — Question Bank format")
+    default_dict = {}
 
-    # Initialize session state for loaded data
-    if "loaded_data" not in st.session_state:
-        st.session_state.loaded_data = {}
-
-    st.header("Load and Edit")
-    file_path = st.text_input(
-        "Enter a file path on server (to overwrite)",
-        value=QUESTIONS_DIR / "q_00001.md",
-        placeholder="/path/to/question.md",
-    )
-    cols = st.columns(2)
-    with cols[0]:
-        if_load_and_edit = st.button("Load and upload to edit")
-    with cols[1]:
-        if_clear_load = st.button("Clear loaded content")
-
-    # Handle load button click
-    if if_load_and_edit:
-        try:
-            raw = read_question_file(Path(file_path), QUESTIONS_DIR)
-            st.session_state.loaded_data["output_dir"] = str(raw.get("path", "").parent).replace(
-                raw.get("meta", {}).get("topic", ""), ""
-            )
-            st.session_state.loaded_data["topic"] = raw.get("meta", {}).get("topic", "")
-            st.session_state.loaded_data["difficulty"] = raw.get("meta", {}).get("difficulty", "")
-            st.session_state.loaded_data["qid"] = raw.get("filename", "").split(".")[0].split("_")[1]
-            st.session_state.loaded_data["prev_year"] = raw.get("meta", {}).get("prev_year", "")
-            extra_meta = {
-                k: v for k, v in raw.get("meta", {}).items() if k not in ["topic", "difficulty", "prev_year", "answer"]
-            }
-            st.session_state.loaded_data["extra_meta_text"] = json.dumps(extra_meta, indent=2) if extra_meta else ""
-            st.session_state.loaded_data["question_text"] = raw.get("question_text", "")
-            st.session_state.loaded_data["options"] = (
-                list(raw.get("options", {}).values()) if raw.get("options") else [""] * 4
-            )
-            st.session_state.loaded_data["solution_text"] = raw.get("solution", "")
-            st.session_state.loaded_data["correct_answer"] = raw.get("meta", {}).get("answer", "")
-            st.success(f"Loaded file: {file_path}")
-        except Exception as e:
-            st.error(f"Could not read {file_path}: {e}")
-
-    # Handle clear button click
-    if if_clear_load:
-        st.session_state.loaded_data = {}
-        st.success("Cleared loaded content")
-
-    # Use session state data as defaults
-    default_dict = st.session_state.loaded_data
-
-    output_dir = st.text_input(
-        "Output directory (relative to project root)", value=default_dict.get("output_dir", QUESTIONS_DIR)
-    )
+    output_dir = st.text_input("Output directory (relative to project root)", value=QUESTIONS_DIR)
 
     with st.form("qform"):
         st.subheader("Question metadata")
-        topic = st.text_input("Topic (e.g. algebra, geometry)", value=default_dict.get("topic", ""))
+        topic = st.text_input("Topic (e.g. algebra, geometry)", value="")
         topic = topic.strip().capitalize() if topic else ""
         output_dir = Path(output_dir.strip()) / topic
 
         difficulty_options = ["", "Easy", "Medium", "Hard"]
-        loaded_difficulty = default_dict.get("difficulty", "")
+        loaded_difficulty = ""
         difficulty_index = (
             difficulty_options.index(loaded_difficulty) if loaded_difficulty in difficulty_options else 0
         )
         difficulty = st.selectbox("Difficulty", difficulty_options, index=difficulty_index)
-        qid = st.text_input("Question ID (leave blank to auto-generate)", value=default_dict.get("qid"))
-        prev_year = st.text_input(
-            "Years in which this appeared (optional)", help="e.g. 2023", value=default_dict.get("prev_year")
-        )
+        prev_year = st.text_input("Years in which this appeared (optional)", help="e.g. 2023", value="")
         extra_meta_text = st.text_area(
             "Extra metadata (as JSON) — optional",
             placeholder='{"learning_objective":"LO1", "chapter": 3}',
             height=80,
-            value=default_dict.get("extra_meta_text", ""),
+            value="",
         )
 
         st.subheader("Question content")
-        question_text = st.text_area("Question text", height=200, value=default_dict.get("question_text", ""))
+        question_text = st.text_area("Question text", height=200, value="")
         st.markdown("**Options (leave some blank for open-response)**")
         options = []
         for i in range(4):
-            opt = st.text_input(f"Option {chr(65 + i)}", value=default_dict.get("options", [""] * 4)[i])
+            opt = st.text_input(f"Option {chr(65 + i)}")
             options.append(opt if opt.strip() else None)
         # remove trailing None options
         options = [o for o in options if o is not None]
 
         correct_answers = st.text_input(
             "Correct answers (if multiple-choice)",
-            value=default_dict.get("correct_answer", ""),
             help="Leave blank for non-MCQ or when you don't want the correct option set here",
         )
 
-        solution_text = st.text_area("Solution", height=200, value=default_dict.get("solution_text", ""))
+        solution_text = st.text_area("Solution", height=200, value="")
 
-        generated_file_name = f"q_{generate_id(output_dir, qid)}.md"
+        generated_file_name = f"q_{generate_id(output_dir)}.md"
 
         st.subheader("Output options")
         filename_override = st.text_input(
@@ -209,7 +151,7 @@ def main():
         )
         logger.info(f"Filename override: {filename_override}")
 
-        submit = st.form_submit_button("Create/Update question file")
+        submit = st.form_submit_button("Create question file")
 
     if submit:
         ensure_output_dir(output_dir)
