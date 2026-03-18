@@ -7,15 +7,16 @@ from pathlib import Path
 
 import streamlit as st
 
+from qnbk import DEFAULT_LATEX_EXPORT_DIR, DEFAULT_QUESTIONS_DIR, DEFAULT_TEMPLATE_DIR, DEFAULT_TEMPLATE_NAME
 from qnbk.utils import read_question_file
 
 # ---------------------------
 # Configuration
 # ---------------------------
-QUESTIONS_DIR = Path("data/mathematics")
-OUTPUT_DIR = Path("output")
-TEMPLATE_DIR = Path("data/latex")
-TEMPLATE_NAME = "latex_template.tex"
+QUESTIONS_DIR = DEFAULT_QUESTIONS_DIR
+OUTPUT_DIR = DEFAULT_LATEX_EXPORT_DIR
+TEMPLATE_DIR = DEFAULT_TEMPLATE_DIR
+TEMPLATE_NAME = DEFAULT_TEMPLATE_NAME
 OUTPUT_DIR.mkdir(exist_ok=True)
 PDF_ENGINE = "pdflatex"  # change if you prefer xelatex or lualatex
 
@@ -33,7 +34,7 @@ def load_all_questions(qdir: Path) -> list[dict]:
     qs = []
     for f in files:
         try:
-            qs.append(read_question_file(f))
+            qs.append(read_question_file(f, qdir))
         except Exception as e:
             st.error(f"Error reading {f}: {e}")
     return qs
@@ -66,7 +67,7 @@ def escape_latex(s: str) -> str:
     replacements = {}
     token_idx = 0
 
-    def _repl(m):  # noqa: ANN001
+    def _repl(m):  # noqa: ANN001, ANN202
         nonlocal token_idx
         token = f"@@MATH{token_idx}@@"
         replacements[token] = m.group(0)
@@ -142,7 +143,7 @@ def question_to_latex(q: dict) -> str:
     else:
         # fallback to vertical options using nested enumerate
         s.append("\\begin{enumerate}\n")
-        for letter in enumerate(opt_order):
+        for letter in opt_order:
             s.append("\\item " + opt_texts[letter] + "\n")
         s.append("\\end{enumerate}\n")
 
@@ -159,8 +160,23 @@ def question_to_latex(q: dict) -> str:
 
 
 def render_latex_template_simple(
-    template_path: Path, title: str, date_str: str, questions_tex: str, show_solutions: bool, answer_block=None
+    template_path: Path,
+    title: str,
+    date_str: str,
+    questions_tex: str,
+    show_solutions: bool,
+    answer_block: str | None = None,
 ) -> str:
+    """Render into the latex template
+
+    :param template_path:
+    :param title:
+    :param date_str:
+    :param questions_tex:
+    :param show_solutions:
+    :param answer_block:
+    :return:
+    """
     tpl = template_path.read_text(encoding="utf-8")
 
     show_solutions_line = r"\showsolutiontrue" if show_solutions else r"\showsolutionfalse"
@@ -171,7 +187,7 @@ def render_latex_template_simple(
     out = out.replace("<<<QUESTIONS_BLOCK>>>", questions_tex)
     out = out.replace("<<<ANSWER_KEY_BLOCK>>>", answer_block)
 
-    return out
+    return out  # noqa: RET504
 
 
 def compile_latex(tex_path: Path, workdir: Path) -> tuple[bool, Path | Exception]:
@@ -258,7 +274,7 @@ for idx, q in enumerate(filtered):
                 st.markdown(q.get("solution", ""))
 
     with row_cols[2]:
-        st.write(f"Topic: {q['meta'].get('topic')}  \nDiff: {q['meta'].get('difficulty')}")
+        st.write(f"Diff: {q['meta'].get('difficulty')}")
         ans_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
         ans_text = [q.get("options", {}).get(ans_letter, "").strip() for ans_letter in ans_letters]
         ans_text = ",".join(ans_text)
@@ -277,7 +293,7 @@ if len(chosen) == 0:
     st.info("Select at least one question to enable export.")
 else:
     if st.button("Export selected questions to LaTeX and PDF"):
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
         tex_name = OUTPUT_DIR / f"Q_{timestamp}.tex"
 
         question_fragments = []
@@ -302,7 +318,7 @@ else:
             answer_block = r"\pagebreak" + "\n".join([f"{row['number']}:{row['answer']}\n" for row in answer_key_rows])
 
         template_path = TEMPLATE_DIR / TEMPLATE_NAME
-        date_str = datetime.datetime.now().strftime("%B %d, %Y")
+        date_str = datetime.datetime.now(datetime.timezone.utc).strftime("%B %d, %Y")
         tex_text = render_latex_template_simple(
             template_path,
             title=title,

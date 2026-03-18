@@ -1,4 +1,5 @@
-# question_creator_app.py
+"""Create questions in a structured format (Markdown with YAML front matter) using a Streamlit interface."""
+
 import json
 import os
 from pathlib import Path
@@ -6,7 +7,9 @@ from pathlib import Path
 import streamlit as st
 from loguru import logger
 
-QUESTIONS_DIR = Path("questions_output")
+from qnbk import DEFAULT_QUESTIONS_DIR
+
+QUESTIONS_DIR = DEFAULT_QUESTIONS_DIR
 
 
 def ensure_output_dir(out_dir: Path) -> None:
@@ -16,6 +19,7 @@ def ensure_output_dir(out_dir: Path) -> None:
 
 def generate_id(directory: Path) -> str:
     """Find the latest question number in the directory and generate a new ID by incrementing it.
+
     If no questions exist, start with 001.
     :param directory:
     :return:
@@ -43,7 +47,7 @@ def build_question_dict(
     solution_text: str,
     correct_option: str | list[str] | None,
     extra_metadata: dict | None = None,
-):
+) -> dict:
     """Build a structured dictionary for the question, separating metadata and body content."""
     metadata = {
         "topic": topic,
@@ -68,6 +72,7 @@ def build_question_dict(
 
 def write_md_file(qdict: dict, filename: str) -> None:
     """Write the question dictionary to a Markdown file with YAML front matter for metadata and body content below.
+
     :param qdict:
     :param filename:
     :return:
@@ -91,8 +96,9 @@ def write_md_file(qdict: dict, filename: str) -> None:
     logger.info(f"Written to file: {filename}")
 
 
-def main():
-    """The main routine
+def main() -> None:
+    """Enter here
+
     :return:
     """
     # ---------------------------
@@ -100,7 +106,6 @@ def main():
     # ---------------------------
     st.set_page_config(page_title="Question Bank Creator", layout="wide")
     st.title("Question File Creator/Editor — Question Bank format")
-    default_dict = {}
 
     output_dir = st.text_input("Output directory (relative to project root)", value=QUESTIONS_DIR)
 

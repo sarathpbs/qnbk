@@ -1,6 +1,8 @@
 r"""Streamlit Question File Editor
 
-Loads question files in the following format (YAML front-matter + body), lets you edit metadata, question, options and solution, and save back to the same file or to a new filename.
+Loads question files in the following format (YAML front-matter + body),
+lets you edit metadata, question, options and solution, and save back to the same file
+or to a new filename.
 
 Example input file:
 ---
@@ -28,17 +30,22 @@ Differentiate: \(f'(x)=2x\).
 Usage: `streamlit run streamlit_question_editor.py`
 
 Notes:
-- If you upload a file using the uploader, you can save it back to disk (if running locally) or download the updated file.
-- If you provide a file path that exists on the server where Streamlit runs, the app can overwrite that file when you press "Save to same file".
+- If you upload a file using the uploader, you can save it back to disk (if running locally) or
+download the updated file.
+- If you provide a file path that exists on the server where Streamlit runs, the app can overwrite that file when
+you press "Save to same file".
 
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
 import streamlit as st
 
-st.set_page_config(page_title="Question File Editor", layout="centered")
+from qnbk import DEFAULT_QUESTIONS_DIR
+
+st.set_page_config(page_title="Question File Editor", layout="wide")
 
 # ----------------- Parsing Utilities -----------------
 
@@ -47,7 +54,7 @@ OPTION_RE = re.compile(r"^Option([A-Z]):\s*(.*)$", re.MULTILINE)
 SOLUTION_HEADER_RE = re.compile(r"^##\s*Solution\s*$", re.IGNORECASE | re.MULTILINE)
 
 
-def parse_front_matter(text: str):
+def parse_front_matter(text: str) -> tuple[dict, str]:
     """Return (meta_dict, rest_text). Simple YAML-like parser: key: value per line."""
     m = FRONT_MATTER_RE.match(text)
     meta = {}
@@ -67,7 +74,7 @@ def parse_front_matter(text: str):
     return meta, rest.lstrip("\n")
 
 
-def parse_body(text: str):
+def parse_body(text: str) -> tuple[str, dict, str]:
     """Return (question_text, options_dict, solution_text)
 
     - Options matched by lines starting with OptionX: <text>
@@ -100,6 +107,14 @@ def parse_body(text: str):
 
 
 def compose_file(meta: dict, question: str, options: dict, solution: str) -> str:
+    """Compose the file
+
+    :param meta:
+    :param question:
+    :param options:
+    :param solution:
+    :return:
+    """
     lines = ["---"]
     # keep the keys in the order of meta insertion where possible
     for k, v in meta.items():
@@ -127,21 +142,25 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.header("Load")
-    uploaded = st.file_uploader("Upload question file", type=["txt", "md", "tex"], key="uploader")
-    file_path = st.text_input(
-        "Or enter a file path on server (to overwrite)", value="", placeholder="/path/to/question.md"
+    questions_root = Path(
+        st.text_input("Question bank root directory", value=str(DEFAULT_QUESTIONS_DIR), placeholder="questions_output")
     )
-    if uploaded is not None and uploaded.name:
-        display_name = uploaded.name
-        raw = uploaded.read().decode("utf-8")
-    elif file_path:
-        display_name = file_path
+    file_path = st.text_input(
+        "Question file path (absolute or relative to root)",
+        value="",
+        placeholder="Differentiation/q_00001.md",
+    )
+    if file_path:
+        resolved_path = Path(file_path)
+        if not resolved_path.is_absolute():
+            resolved_path = questions_root / resolved_path
+        display_name = str(resolved_path)
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with open(resolved_path, encoding="utf-8") as f:
                 raw = f.read()
         except Exception as e:
             raw = ""
-            st.error(f"Could not read {file_path}: {e}")
+            st.error(f"Could not read {resolved_path}: {e}")
     else:
         raw = ""
         display_name = ""
@@ -151,7 +170,10 @@ with col1:
 
 with col2:
     st.header("Actions")
-    save_name = st.text_input("Save as filename (if left blank will use input filename)", value="")
+    save_name = st.text_input(
+        "Save as path (absolute or relative to root; blank uses loaded file)",
+        value=display_name.replace(str(questions_root) + "/", ""),
+    )
     overwrite = st.checkbox("Overwrite the provided file path (if valid)", value=False)
     save_button = st.button("Save / Update file")
 
@@ -177,7 +199,7 @@ if raw:
     q_edit = st.text_area("Question text (Markdown / LaTeX allowed)", value=question_text, height=160)
 
     # ensure options A-D are present in UI even if missing
-    option_keys = sorted(list(options_dict.keys()))
+    option_keys = sorted(options_dict.keys())
     # default to A,B,C,D if no options found
     if not option_keys:
         option_keys = ["A", "B", "C", "D"]
@@ -207,27 +229,35 @@ if raw:
 
     # save logic
     if save_button:
-        target_name = save_name.strip() or display_name or f"question_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.md"
+        target_name = (
+            save_name.strip()
+            or display_name
+            or (f"question_{datetime.now(tz=timezone.utc).strftime('%Y%m%d%H%M%S')}.md")
+        )
+        target_path = Path(target_name) if target_name else None
+        if target_path and not target_path.is_absolute():
+            target_path = questions_root / target_path
         # if user requested overwrite and provided a server-side path
         saved = False
         save_errors = []
         if overwrite and file_path:
             try:
-                with open(file_path, "w", encoding="utf-8") as f:
+                with open(display_name, "w", encoding="utf-8") as f:
                     f.write(new_content)
                 saved = True
-                st.success(f"Overwrote file: {file_path}")
+                st.success(f"Overwrote file: {display_name}")
             except Exception as e:
-                save_errors.append(f"Could not overwrite {file_path}: {e}")
-        # else attempt to save to local server path if save_name looks like a path
-        if not saved and save_name:
+                save_errors.append(f"Could not overwrite {display_name}: {e}")
+        # else attempt to save to the selected path
+        if not saved and target_path:
             try:
-                with open(save_name, "w", encoding="utf-8") as f:
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(target_path, "w", encoding="utf-8") as f:
                     f.write(new_content)
                 saved = True
-                st.success(f"Saved to: {save_name}")
+                st.success(f"Saved to: {target_path}")
             except Exception as e:
-                save_errors.append(f"Could not save to {save_name}: {e}")
+                save_errors.append(f"Could not save to {target_path}: {e}")
 
         if not saved:
             # provide as download
