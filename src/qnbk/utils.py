@@ -1,11 +1,40 @@
+"""Utility functions"""
+
 import re
 from pathlib import Path
 
 import yaml
+from loguru import logger
 
 option_pattern_raw = r"^\s*Option([A-D])\s*[:\-]?\s*(.+)"
 opt_pattern = re.compile(option_pattern_raw, re.M)
 opt_pattern_bare = re.compile(r"^\s*([A-D])[\.\)]\s*(.+)", re.M)
+
+
+def write_md_file(qdict: dict, filename: str) -> None:
+    """Write the question dictionary to a Markdown file with YAML front matter for metadata and body content below.
+
+    :param qdict:
+    :param filename:
+    :return:
+    """
+    with open(filename, "w", encoding="utf-8") as f:
+        # write metadata:
+        f.write("---\n")
+        for k, v in qdict["metadata"].items():
+            f.write(f"{k}: {v}\n")
+        f.write("---\n\n\n")
+        # write question
+        f.write(qdict["body"]["question"] + "\n\n")
+        # write options if they exist
+        if qdict["body"]["options"]:
+            for opt_label, opt in zip(["A", "B", "C", "D"], qdict["body"]["options"], strict=False):
+                f.write(f"Option{opt_label}: {opt}\n")
+        # write solution
+        if qdict["body"]["solution"]:
+            f.write("\n\n## Solution\n\n")
+            f.write(qdict["body"]["solution"] + "\n")
+    logger.info(f"Written to file: {filename}")
 
 
 def split_solution_from_body(body: str) -> tuple[str, str]:
@@ -51,6 +80,9 @@ def read_question_file(path: Path, qns_dir: Path = "data") -> dict:
     meta.setdefault("topic", "Uncategorized")
     meta.setdefault("difficulty", "Unknown")
     meta.setdefault("answer", None)
+    meta.setdefault("class", "Unknown")
+    meta.setdefault("last_used", "")
+    meta.setdefault("prev_year", "")
 
     body = body.rstrip("\n")
     body_without_solution, extracted_solution = split_solution_from_body(body)
