@@ -15,11 +15,12 @@
 % A column type for balanced columns (uses tabularx)
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
-% Helper macro to render 4 options horizontally with labels
+% Helper macro to render 4 options in a 2x2 table with labels
 % Usage: \OptionRow{A-text}{B-text}{C-text}{D-text}
 \newcommand{\OptionRow}[4]{%
-  \begin{tabularx}{\textwidth}{@{}Y Y Y Y@{}}%
-    \textbf{A.}~#1 & \textbf{B.}~#2 & \textbf{C.}~#3 & \textbf{D.}~#4%
+  \begin{tabularx}{\textwidth}{@{}Y Y@{}}%
+    \textbf{A.}~#1 & \textbf{B.}~#2 \\
+    \textbf{C.}~#3 & \textbf{D.}~#4%
   \end{tabularx}%
 }
 % ----- ENUMERATE LABEL SETTINGS (no enumitem needed) -----

@@ -28,7 +28,7 @@ def write_md_file(qdict: dict, filename: str) -> None:
         f.write(qdict["body"]["question"] + "\n\n")
         # write options if they exist
         options = qdict["body"]["options"]
-        if len(options):
+        if all(options.values()):
             for opt_label, opt in options.items():
                 f.write(f"Option{opt_label}: {opt}\n")
         # write solution

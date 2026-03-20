@@ -129,24 +129,24 @@ def question_to_latex(q: dict) -> str:
     s.append("\\item " + question_text + "\n")
 
     # correct = (meta.get("answer") or "").strip().upper()
-
-    if use_horizontal:
-        # use the `OptionRow` macro to render options in a single horizontal row
-        opt_args = []
-        for letter in opt_order:
-            body = opt_texts[letter]
-            # ensure each argument is TeX safe (already escaped)
-            opt_args.append(body)
-        # use the OptionRow macro: pass four parameters
-        # join with ' & ' handled by the macro; here we build the macro call
-        macro_call = "\\OptionRow{" + "}{".join(opt_args) + "}"
-        s.append(macro_call + "\n")
-    else:
-        # fallback to vertical options using nested enumerate
-        s.append("\\begin{enumerate}\n")
-        for letter in enumerate(opt_order):
-            s.append("\\item " + opt_texts[letter] + "\n")
-        s.append("\\end{enumerate}\n")
+    if all(opt_texts.values()):
+        if use_horizontal:
+            # use the `OptionRow` macro to render options in a single horizontal row
+            opt_args = []
+            for letter in opt_order:
+                body = opt_texts[letter]
+                # ensure each argument is TeX safe (already escaped)
+                opt_args.append(body)
+            # use the OptionRow macro: pass four parameters
+            # join with ' & ' handled by the macro; here we build the macro call
+            macro_call = "\\OptionRow{" + "}{".join(opt_args) + "}"
+            s.append(macro_call + "\n")
+        else:
+            # fallback to vertical options using nested enumerate
+            s.append("\\begin{enumerate}\n")
+            for letter in enumerate(opt_order):
+                s.append("\\item " + opt_texts[letter] + "\n")
+            s.append("\\end{enumerate}\n")
 
     # Solution (always included in .tex; printing controlled by template)
     sol_text = q.get("solution", "") or ""
