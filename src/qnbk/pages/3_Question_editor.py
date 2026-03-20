@@ -210,6 +210,10 @@ if raw:
         with opt_cols[i]:
             updated_options[k] = st.text_input(f"Option {k}", value=options_dict.get(k, ""), key=f"opt_{k}")
 
+    if not all(updated_options.values()):
+        st.info("Some options are blank; this will be treated as an open-response question.")
+        updated_options = {}
+
     st.subheader("Solution")
     sol_edit = st.text_area("Solution (markdown / LaTeX allowed)", value=solution_text, height=160)
 

@@ -32,7 +32,7 @@ def generate_id(directory: Path) -> str:
             existing_ids.append(int(num_part))
         except (IndexError, ValueError):
             continue
-        new_id_num = max(existing_ids) + 1 if existing_ids else 1
+    new_id_num = max(existing_ids) + 1 if existing_ids else 1
     return f"{new_id_num:05d}"
 
 
@@ -42,7 +42,7 @@ def build_question_dict(
     difficulty: str,
     prev_year: str,
     question: str,
-    options: list[str] | None,
+    options: dict | None,
     solution_text: str,
     correct_option: str | list[str] | None,
     extra_metadata: dict | None = None,
@@ -63,10 +63,10 @@ def build_question_dict(
     # Build body which contains question text, options, and the solution (moved here)
     body = {
         "question": question,
-        "options": options if sum([1 if o else 0 for o in options]) == 4 else None,
-        # Store the 'solution' inside body. This matches your earlier change requests.
+        "options": options,
         "solution": (solution_text if solution_text and solution_text.strip() else None),
     }
+    logger.info(f"{options=}")
 
     return {"metadata": metadata, "body": body}
 
@@ -112,9 +112,10 @@ def main() -> None:
         options = []
         for i in range(4):
             opt = st.text_input(f"Option {chr(65 + i)}")
-            options.append(opt if opt.strip() else None)
-        # remove trailing None options
-        options = [o for o in options if o is not None]
+            options.append(opt)
+
+        options = dict(zip(["A", "B", "C", "D"], options, strict=False))
+        logger.info(f"{options=}")
 
         correct_answers = st.text_input(
             "Correct answers (if multiple-choice)",

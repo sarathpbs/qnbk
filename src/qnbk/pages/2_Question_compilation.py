@@ -6,9 +6,10 @@ import subprocess
 from pathlib import Path
 
 import streamlit as st
+from loguru import logger
 
 from qnbk import DEFAULT_LATEX_EXPORT_DIR, DEFAULT_QUESTIONS_DIR, DEFAULT_TEMPLATE_DIR, DEFAULT_TEMPLATE_NAME
-from qnbk.utils import read_question_file
+from qnbk.utils import read_question_file, write_md_file
 
 # ---------------------------
 # Configuration
@@ -143,7 +144,7 @@ def question_to_latex(q: dict) -> str:
     else:
         # fallback to vertical options using nested enumerate
         s.append("\\begin{enumerate}\n")
-        for letter in opt_order:
+        for letter in enumerate(opt_order):
             s.append("\\item " + opt_texts[letter] + "\n")
         s.append("\\end{enumerate}\n")
 
@@ -197,9 +198,10 @@ def compile_latex(tex_path: Path, workdir: Path) -> tuple[bool, Path | Exception
         subprocess.run(cmd, cwd=workdir, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         subprocess.run(cmd, cwd=workdir, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         pdf_path = tex_path.with_suffix(".pdf")
-        return True, pdf_path
     except subprocess.CalledProcessError as e:
         return False, e
+    else:
+        return True, pdf_path
 
 
 # ---------------------------
@@ -220,8 +222,14 @@ questions = load_all_questions(QUESTIONS_DIR)
 # Build filters and sidebar
 with st.sidebar:
     st.header("Filters & Export options")
-    all_topics = sorted({q["meta"].get("topic") or "Uncategorized" for q in questions})
-    all_difficulties = sorted({q["meta"].get("difficulty", "Unknown") for q in questions})
+    all_classes = sorted({q["meta"].get("class") or "None" for q in questions})
+    selected_classes = st.multiselect("Class(es)", all_classes, default=all_classes)
+
+    # Filter questions to only those whose class is in the selected classes
+    class_filtered_questions = [q for q in questions if (q["meta"].get("class") or "None") in selected_classes]
+
+    all_topics = sorted({q["meta"].get("topic") or "Uncategorized" for q in class_filtered_questions})
+    all_difficulties = sorted({q["meta"].get("difficulty") or "Unknown" for q in class_filtered_questions})
 
     selected_topics = st.multiselect("Topic(s)", all_topics, default=all_topics)
     selected_difficulties = st.multiselect("Difficulty level(s)", all_difficulties, default=all_difficulties)
@@ -242,7 +250,7 @@ with st.sidebar:
 # Filter questions
 filtered = [
     q
-    for q in questions
+    for q in class_filtered_questions
     if q["meta"].get("topic") in selected_topics and q["meta"].get("difficulty") in selected_difficulties
 ]
 st.markdown(f"**Found {len(filtered)} questions** matching filters.")
@@ -286,7 +294,14 @@ for idx, q in enumerate(filtered):
 
 # Build list of chosen question objects
 chosen = [filtered[i] for i in selected_indices]
+# logger.info(f"options of all chosen questions: {[q.get('options') for q in chosen]}")
 
+st.write("---")
+update_last_used = st.checkbox(
+    "Update last used",
+    value=False,
+    help="If checked, updates the 'last_used' field in each of the question metadata to current date (YYYY-MM-DD).",
+)
 st.write("---")
 st.markdown(f"**{len(chosen)} selected for export**")
 if len(chosen) == 0:
@@ -298,6 +313,23 @@ else:
 
         question_fragments = []
         for q in chosen:
+            # update the file of `q` if the checkbox is checked
+            if update_last_used:
+                q["meta"]["last_used"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+                solution_text = q.get("solution", "")
+                # write back to file
+                qdict = {
+                    "metadata": q.get("meta"),
+                    "body": {
+                        "question": q.get("question_text") or "",
+                        "options": q.get("options") or {},
+                        "solution": (solution_text if solution_text and solution_text.strip() else None),
+                    },
+                }
+                logger.info(
+                    f"Updating last_used for {q['filename']} to {q['meta']['last_used']}; {qdict['body']['options']}"
+                )
+                write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
             question_fragments.append(question_to_latex(q))
 
