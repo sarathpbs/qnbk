@@ -35,8 +35,6 @@ pattern = "default-unprefixed"
 [tool.poetry.dependencies]
 # Set Python constraints for Poetry
 python = ">=3.10,<3.15"
-# Settings model library
-pydantic-settings = "^2"
 # better logging: from loguru import logger; logger.info("something: {}", data)
 loguru = "*"
 streamlit = "*"
