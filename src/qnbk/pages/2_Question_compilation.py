@@ -238,13 +238,19 @@ with st.sidebar:
 
     compile_pdf = st.checkbox("Compile to PDF", value=True)
 
+    update_last_used = st.checkbox(
+        "Update last used",
+        value=False,
+        help="If checked, updates the 'last_used' field in each of the question metadata to current date (YYYY-MM-DD)",
+    )
+
     st.write("---")
     st.write("Export destination:")
     st.write(str(OUTPUT_DIR.resolve()))
     st.write("---")
     st.write(
         f"Tip: put question files under `{QUESTIONS_DIR}` with YAML frontmatter: "
-        f"topic, difficulty, answer (solution goes in the body)."
+        f"class, topic, difficulty, answer (solution goes in the body)."
     )
 
 # Filter questions
@@ -294,14 +300,7 @@ for idx, q in enumerate(filtered):
 
 # Build list of chosen question objects
 chosen = [filtered[i] for i in selected_indices]
-# logger.info(f"options of all chosen questions: {[q.get('options') for q in chosen]}")
 
-st.write("---")
-update_last_used = st.checkbox(
-    "Update last used",
-    value=False,
-    help="If checked, updates the 'last_used' field in each of the question metadata to current date (YYYY-MM-DD).",
-)
 st.write("---")
 st.markdown(f"**{len(chosen)} selected for export**")
 if len(chosen) == 0:
