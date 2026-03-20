@@ -47,17 +47,6 @@ repos:
         types: [text]
         files: (Dockerfile|\.dockerfile$)
 
-    # type hint checking
-    # TODO: Reenable ASAP to allow type checking to run
-    #  - repo: local
-    #    hooks:
-    #    - id: mypy
-    #      name: make check-py-mypy
-    #      entry: "make check-py-mypy"
-    #      language: system
-    #      'types_or': [python, pyi]
-    #      pass_filenames: false
-    #      verbose: false
 
     # Run linting checks on shell scripts
   - repo: https://github.com/shellcheck-py/shellcheck-py

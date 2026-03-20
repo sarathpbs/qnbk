@@ -81,24 +81,6 @@ else
 PRECOMMIT ?= pre-commit
 endif
 RUFF ?= $(POETRY) run ruff
-MYPY ?= $(POETRY) run mypy
-PYTEST ?= $(POETRY) run pytest
-PDOC ?= $(POETRY) run pdoc
-### Self-contained JAVA_HOME
-## This is use for pytest so it can run pyspark tests, which require a JDK.
-## Query the OS JDK management system for a JDK with this version.
-#JAVA_VERSION ?= 17
-## Set JAVA_HOME for the rest of the Make session
-#MACOS_JAVA_TOOL = /usr/libexec/java_home
-#MACOS_JVM_RES = (test -x $(MACOS_JAVA_TOOL) && $(MACOS_JAVA_TOOL) -v $(JAVA_VERSION))
-#BREW_JVM_RES = (command -v brew > /dev/null && brew --prefix openjdk@$(JAVA_VERSION))
-#DEB_JVM_RES = (test -d /usr/lib/jvm && (ls /usr/lib/jvm/java-$(JAVA_VERSION)-*-$$(dpkg --print-architecture) | sort -V | tail -n 1))
-#JAVA_HOME ?= $(shell $(MACOS_JVM_RES) || $(BREW_JVM_RES) || $(DEB_JVM_RES) || echo '$${JAVA_HOME}')
-## To override the JDK used for pytest's pyspark tests, set PYSPARK_JAVA_HOME.
-## E.g. place this into your .zshrc or .bashrc:
-##     export PRZ_PYSPARK_JAVA_HOME="${JAVA_HOME}"
-## Redefine PYTEST to prepend the JAVA_HOME envvar.
-#PYTEST := JAVA_HOME="$${PRZ_PYSPARK_JAVA_HOME:-$(JAVA_HOME)}" $(PYTEST)
 
 ###
 ### TASKS
@@ -131,15 +113,6 @@ test-all: test-unittests test-integration  ## Run all tests
 # If you mark tests, you can switch to using the marks by swapping the
 # commented lines in the next two tasks.
 
-.PHONY: test-unittests
-test-unittests: ## Run unit tests
-	$(PYTEST) $(TESTS_BASE_DIR)/unit
-# $(PYTEST) tests -m unittest
-
-.PHONY: test-integration
-test-integration: ## Run integration tests
-	$(PYTEST) $(TESTS_BASE_DIR)/integration
-# $(PYTEST) tests -m integration
 
 .PHONY: check
 check: check-py-ruff-format check-py-ruff-lint check-notes ## Run all checks
@@ -178,15 +151,6 @@ check-todo: ## Look for TODO comments
 BUILD_DIR ?= build
 DIST_DIR ?= dist
 REPORTS_DIR = $(BUILD_DIR)/reports
-MYPY_OPTS ?= --show-column-numbers --pretty --html-report $(REPORTS_DIR)/mypy
-.PHONY: check-py-mypy
-check-py-mypy: ## Run MyPy typechecker
-	$(MYPY) $(MYPY_OPTS) $(MODULE_BASE_DIR) $(TESTS_BASE_DIR)
-
-.PHONY: check-py-mypy-ignores
-check-py-mypy-ignores: ## Look for "type: ignore" comments
-	@echo "$(COLOR_RESET)==> $(COLOR_BLUE)type: ignore - address some day…$(COLOR_RESET)"
-	@git grep $(NOTES_GREP_OPTS) "# type: ignore" -- ':!*Makefile' || true
 
 .PHONY: check-precommit
 check-precommit: ## Runs pre-commit on all files
@@ -447,12 +411,6 @@ DOCKER_SAFE_ARTIFACT_VERSION ?= $(shell echo $(ARTIFACT_VERSION) | tr '+' '_')$(
 DOCS_DIR = $(DIST_DIR)/docs
 DOCS_INDEX = $(DOCS_DIR)/index.html
 ALL_PY_FILES = $(shell git ls-files '*.py')
-
-.PHONY: docs
-docs: $(DOCS_INDEX) ## Build API documentation
-
-$(DOCS_INDEX): $(ALL_PY_FILES)
-	$(PDOC) $(PDOC_OPTS) $(MODULE_BASE_DIR) -o $(DOCS_DIR)
 
 ##@ Miscellaneous
 

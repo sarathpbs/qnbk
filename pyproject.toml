@@ -41,19 +41,13 @@ streamlit = "*"
 
 [tool.poetry.group.dev.dependencies]
 # type hints checker
-mypy = { version = "*", extras = ["faster-cache"] }
 black = ">=22"
-flake8 = ">=5"
-# this is a lightweight wrapper around flake8 that reads pyproject.toml for config
-flake8-pyproject = ">=1"
-# xml library, used for outputting HTML reports from mypy, etc.
+# xml library
 lxml = "*"
 # lightning fast linter and style checker
 ruff = "*"
 # pre-commit hooks
 pre-commit = "*"
-# documentation generator
-pdoc = "*"
 ## types packages
 types-Deprecated = "*"
 types-retry = "*"
@@ -78,30 +72,6 @@ exclude = '''
 )/
 '''
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-namespace_packages = true
-check_untyped_defs = true
-plugins = ["pydantic.mypy"]
-
-# Tell mypy to ignore missing imports for the following modules since they don't have type hints
-[[tool.mypy.overrides]]
-module = ["kfp.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = [
-  # external
-  "google.cloud.*",
-  "kfp.*",
-  "pydantic.*",
-  "pytest",
-  # internal
-  # none right now
-]
-ignore_missing_imports = true
 
 # Configure coverage.py, which is enabled in the pytest addopts above
 [tool.coverage.run]
@@ -113,7 +83,7 @@ directory = "build/coverage"
 [tool.coverage.xml]
 output = "build/coverage/coverage.xml"
 [tool.coverage.paths]
-source = ["src/tgt_prz_items_with_deals"]
+source = ["src/qnbk"]
 
 [tool.ruff]
 # Same as Black.
@@ -184,13 +154,7 @@ ignore = [
   "ANN201",  # function return type annotation
   "PLC0415", # import-outside-top-level; required in some tests
 ]
-##tool.ruff.lint.per-file-ignores##
-"src/tgt_prz_items_with_deals/pipelines/iwd_write_embeds/*" = [
-  "PLC0415", # import-outside-top-level; required in KFP pipeline definitions and components
-]
-"src/tgt_prz_items_with_deals/pipelines/iwd_training/*" = [
-  "PLC0415", # import-outside-top-level; required in KFP pipeline definitions and components
-]
+
 
 [build-system]
 requires = [
