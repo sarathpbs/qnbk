@@ -80,6 +80,7 @@ def escape_latex(s: str) -> str:
         protected = protected.replace(k, v)
     for token, math in replacements.items():
         protected = protected.replace(token, math)
+    logger.info(f"{s=} -> {protected=}")
     return protected
 
 
