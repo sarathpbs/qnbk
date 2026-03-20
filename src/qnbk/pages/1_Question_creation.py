@@ -8,6 +8,7 @@ import streamlit as st
 from loguru import logger
 
 from qnbk import DEFAULT_QUESTIONS_DIR
+from qnbk.utils import write_md_file
 
 QUESTIONS_DIR = DEFAULT_QUESTIONS_DIR
 
@@ -31,15 +32,13 @@ def generate_id(directory: Path) -> str:
             existing_ids.append(int(num_part))
         except (IndexError, ValueError):
             continue
-    if existing_ids:
-        new_id_num = max(existing_ids) + 1
-    else:
-        new_id_num = 1
+        new_id_num = max(existing_ids) + 1 if existing_ids else 1
     return f"{new_id_num:05d}"
 
 
 def build_question_dict(
     topic: str | Path,
+    class_num: str,
     difficulty: str,
     prev_year: str,
     question: str,
@@ -51,9 +50,11 @@ def build_question_dict(
     """Build a structured dictionary for the question, separating metadata and body content."""
     metadata = {
         "topic": topic,
+        "class": class_num,
         "difficulty": difficulty or "",
         "answer": correct_option or "",
         "prev_year": prev_year or "",
+        "last_used": "",
     }
     # include any extra metadata fields
     if extra_metadata:
@@ -68,32 +69,6 @@ def build_question_dict(
     }
 
     return {"metadata": metadata, "body": body}
-
-
-def write_md_file(qdict: dict, filename: str) -> None:
-    """Write the question dictionary to a Markdown file with YAML front matter for metadata and body content below.
-
-    :param qdict:
-    :param filename:
-    :return:
-    """
-    with open(filename, "w", encoding="utf-8") as f:
-        # write metadata:
-        f.write("---\n")
-        for k, v in qdict["metadata"].items():
-            f.write(f"{k}: {v}\n")
-        f.write("---\n\n\n")
-        # write question
-        f.write(qdict["body"]["question"] + "\n\n")
-        # write options if they exist
-        if qdict["body"]["options"]:
-            for opt_label, opt in zip(["A", "B", "C", "D"], qdict["body"]["options"], strict=False):
-                f.write(f"Option{opt_label}: {opt}\n")
-        # write solution
-        if qdict["body"]["solution"]:
-            f.write("\n\n## Solution\n\n")
-            f.write(qdict["body"]["solution"] + "\n")
-    logger.info(f"Written to file: {filename}")
 
 
 def main() -> None:
@@ -113,7 +88,9 @@ def main() -> None:
         st.subheader("Question metadata")
         topic = st.text_input("Topic (e.g. algebra, geometry)", value="")
         topic = topic.strip().capitalize() if topic else ""
-        output_dir = Path(output_dir.strip()) / topic
+        class_num = st.selectbox("Class", ["XII", "XI", "X", "IX", "VIII"], index=0)
+
+        output_dir = Path(output_dir.strip()) / f"Class-{class_num}" / topic
 
         difficulty_options = ["", "Easy", "Medium", "Hard"]
         loaded_difficulty = ""
@@ -170,6 +147,7 @@ def main() -> None:
 
         qdict = build_question_dict(
             topic=topic,
+            class_num=class_num,
             difficulty=difficulty,
             prev_year=prev_year,
             question=question_text,
