@@ -40,51 +40,15 @@ loguru = "*"
 streamlit = "*"
 
 [tool.poetry.group.dev.dependencies]
-# type hints checker
-black = ">=22"
-# xml library
-lxml = "*"
 # lightning fast linter and style checker
 ruff = "*"
 # pre-commit hooks
 pre-commit = "*"
-## types packages
-types-Deprecated = "*"
-types-retry = "*"
-# explicitly added for use in Makefile; no other direct usage permitted.
-PyYAML = "*"
 
 ###
 # Below here are rarely-touched settings for the various tools used in this project.
 # N.b. Change the Python versions below when changing tool.poetry.dependencies.python above.
 ###
-
-# black config left for editors that use black internally, make and humans use ruff
-[tool.black]
-# 119 = GitHub's wrapping limit
-line-length = 119
-target-version = ['py310']
-include = '\.pyi?$'
-exclude = '''
-/(
- dev
-| .poetry
-)/
-'''
-
-
-# Configure coverage.py, which is enabled in the pytest addopts above
-[tool.coverage.run]
-branch = true
-[tool.coverage.report]
-skip_empty = true
-[tool.coverage.html]
-directory = "build/coverage"
-[tool.coverage.xml]
-output = "build/coverage/coverage.xml"
-[tool.coverage.paths]
-source = ["src/qnbk"]
-
 [tool.ruff]
 # Same as Black.
 line-length = 119
