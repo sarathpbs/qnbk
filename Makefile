@@ -15,8 +15,7 @@
 ## READ OUTPUT CAREFULLY.
 
 ## Source location
-MODULE_BASE_DIR = src/pyQBnk
-TESTS_BASE_DIR = tests
+MODULE_BASE_DIR = src/qnbk
 
 ## Set this variable to any value to disable installing pre-commit git hooks
 ## It can also be passed with `make deps DEPS_NO_PRECOMMIT=1` to disable for one `deps` task run.
@@ -100,26 +99,12 @@ debug-make: ## Shows ~all runtime-set variables
 	@echo $(foreach v, $(.VARIABLES), $(info $(v) = $($(v))))
 
 
-##@ Development
-
-.PHONY: test
-test: test-unittests ## Run required tests
-	@echo "$(COLOR_GREEN)$(MAKECMDGOALS) succeeded$(COLOR_RESET)"
-
-.PHONY: test-all
-test-all: test-unittests test-integration  ## Run all tests
-	@echo "$(COLOR_GREEN)$(MAKECMDGOALS) succeeded$(COLOR_RESET)"
-
-# If you mark tests, you can switch to using the marks by swapping the
-# commented lines in the next two tasks.
-
-
 .PHONY: check
 check: check-py-ruff-format check-py-ruff-lint check-notes ## Run all checks
 
 .PHONY: check-py-ruff-lint
 check-py-ruff-lint: ## Run ruff linter
-	$(RUFF) $(RUFF_OPTS) check $(RUFF_CHECK_OPTS) $(MODULE_BASE_DIR) $(TESTS_BASE_DIR) || \
+	$(RUFF) $(RUFF_OPTS) check $(RUFF_CHECK_OPTS) $(MODULE_BASE_DIR) || \
 		(echo "$(COLOR_RED)Run '$(notdir $(MAKE)) check-py-ruff-fix' to fix some of these automatically if [*] appears above, then run '$(notdir $(MAKE)) $(MAKECMDGOALS)' again." && false)
 
 .PHONY: check-py-ruff-fix
@@ -150,7 +135,6 @@ check-todo: ## Look for TODO comments
 
 BUILD_DIR ?= build
 DIST_DIR ?= dist
-REPORTS_DIR = $(BUILD_DIR)/reports
 
 .PHONY: check-precommit
 check-precommit: ## Runs pre-commit on all files
@@ -330,16 +314,6 @@ poetry-relock: pyproject.toml ## Run poetry lock w/o updating deps, use after ch
 poetry-build: clean-dist ## Run poetry build with any environment-required flags
 	$(POETRY) build
 
-# For release builds, pass this e.g. ARTIFACT_VERSION=${CI_BUILD_TAG}
-ifndef ARTIFACT_VERSION
-ARTIFACT_VERSION = $(shell $(POETRY) version | cut -d ' ' -f 2)
-endif
-# For test builds, set TEST_VERSION. This tries to force PEP 440 resolvers to choose the newer test version.
-TEST_VERSION ?= 1
-ifndef ARTIFACT_TEST_VERSION
-ARTIFACT_TEST_VERSION = $(shell git describe --tags | awk -F '-' '{print $$1 ".post" $$2 ".dev$(TEST_VERSION)" "+" $$3 "-$(shell whoami)" }')
-endif
-
 
 EXPORTED_REQUIREMENTS_TXT = $(DIST_DIR)/requirements.txt
 
@@ -381,12 +355,6 @@ fix-poetry-conflicts-2: ## Another way to try to fix Poetry merge/rebase conflic
 
 ##@ Docker tasks for getting started
 
-.PHONY: install-colima
-install-colima: ## Install Colima for Docker with Target configuration
-	brew tap --verbose | grep 'tgt\/brewhouse' || brew tap tgt/brewhouse git@git.target.com:brew/house.git
-	brew install tgt-docker_helper_scripts
-	tgt-install-colima.sh
-
 .PHONY: colima-minimum
 colima-minimum: ## Starts a Colima VM with minimum resources necessary
 	colima start --cpu 2 --memory 4 --arch x86_64 --disk 80
@@ -407,15 +375,10 @@ DOCKER_AUTO_TAGS_USER ?= -$(shell whoami)
 DOCKER_SAFE_ARTIFACT_VERSION ?= $(shell echo $(ARTIFACT_VERSION) | tr '+' '_')$(DOCKER_AUTO_TAGS_USER)
 
 
-##@ Documentation
-DOCS_DIR = $(DIST_DIR)/docs
-DOCS_INDEX = $(DOCS_DIR)/index.html
-ALL_PY_FILES = $(shell git ls-files '*.py')
-
 ##@ Miscellaneous
 
 .PHONY: all
-all:
+all: deps
 
 .PHONY: clean-dist
 clean-dist: ## Clean poetry dist artifacts
@@ -427,3 +390,5 @@ clean-build: ## Clean artifacts from build directories
 
 .PHONY: clean
 clean: clean-dist clean-build ## Clean artifacts from build and dist directories
+
+.PHONY: test
