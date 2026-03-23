@@ -65,7 +65,8 @@ def escape_latex(s: str) -> str:
     if not isinstance(s, str):
         return s
     math_pat = re.compile(
-        r"(\\\(.+?\\\))|(\\\[.+?\\\])|(\$\$.+?\$\$)|(\$.+?\$)|(\\begin\{([^}]+)\}.*?\\end\{\6\})", re.S
+        r"(\\\(.+?\\\))|(\\\[.+?\\\])|(\$\$.+?\$\$)|(\$.+?\$)|(\\begin\{([^}]+)\}.*?\\end\{\6\})|(\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{[^}]*\})*)",
+        re.S,
     )
     replacements = {}
     token_idx = 0
