@@ -64,7 +64,9 @@ def escape_latex(s: str) -> str:
     """
     if not isinstance(s, str):
         return s
-    math_pat = re.compile(r"(\\\(.+?\\\))|(\\\[.+?\\\])|(\$\$.+?\$\$)|(\$.+?\$)", re.S)
+    math_pat = re.compile(
+        r"(\\\(.+?\\\))|(\\\[.+?\\\])|(\$\$.+?\$\$)|(\$.+?\$)|(\\begin\{([^}]+)\}.*?\\end\{\6\})", re.S
+    )
     replacements = {}
     token_idx = 0
 
@@ -145,7 +147,7 @@ def question_to_latex(q: dict) -> str:
         else:
             # fallback to vertical options using nested enumerate
             s.append("\\begin{enumerate}\n")
-            for letter in enumerate(opt_order):
+            for letter in opt_order:
                 s.append("\\item " + opt_texts[letter] + "\n")
             s.append("\\end{enumerate}\n")
 
