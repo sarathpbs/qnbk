@@ -8,6 +8,9 @@
 *.obj
 bin/
 .vagrant/
+questions_output/
+output/
+
 
 prz-metadata.json*
 
