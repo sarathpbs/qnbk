@@ -12,6 +12,9 @@ brew "pyenv-virtualenv"
 brew "pre-commit" if File.exist?(".pre-commit-config.yaml")
 # json query
 brew "jq"
+# LaTeX distribution
+brew "texlive" if OS.mac?
+
 
 ## PYTHON BUILD DEPENDENCIES
 py_version = open(".python-version").read.strip.split(".").take(2).join(".")

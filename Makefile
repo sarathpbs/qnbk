@@ -228,7 +228,7 @@ deps-precommit-warning:
 	@echo "==> $(COLOR_ORANGE)Use 'git commit --no-verify' to disable pre-commit entirely for just one commit.$(COLOR_RESET)"
 
 .PHONY: deps
-deps: deps-brew deps-py $(DEPS_TASKS_PRECOMMIT) ## Installs all dependencies
+deps: deps-brew deps-py deps-latex $(DEPS_TASKS_PRECOMMIT) ## Installs all dependencies
 	@echo "$(COLOR_GREEN)All deps installed!$(COLOR_RESET)"
 .PHONY: deps-py
 deps-py: install-python $(POETRY_TASK) poetry-use-pyenv poetry-install ## Install Python-based dependencies
@@ -268,6 +268,19 @@ deps-brew: ## Installs development dependencies from Homebrew
 		echo "$(COLOR_ORANGE)Please read the 'brew info <pkg>' for each package carefully.$(COLOR_RESET)"
 	@command -v $(PYENV) > /dev/null || \
 		echo "$(COLOR_RED)Run your make command again after adding the above so that $(PYENV) is available.$(COLOR_RESET)"
+
+.PHONY: deps-latex
+deps-latex: init-usertree ## Installs development dependencies from Latex
+	xargs tlmgr --usermode install < latex-packages.txt
+
+.PHONY: init-usertree ## Sets latex up for user-level package installation, run once before
+init-usertree:
+	@if [ -f "$$HOME/texmf/tlpkg/texlive.tlpdb" ]; then \
+		echo "User tree already initialized."; \
+	else \
+		echo "Initializing TeX Live user tree..."; \
+		tlmgr init-usertree; \
+	fi
 
 .PHONY: install-python
 install-python: $(PYTHON_EXEC) ## Installs appropriate Python version
