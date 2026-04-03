@@ -99,7 +99,7 @@ def md_to_latex_minimal(md_text: str) -> str:
     return t  # noqa: RET504
 
 
-def question_to_latex(q: dict) -> str:
+def question_to_latex(q: dict) -> tuple[str, str]:
     """Render one question to LaTeX.
 
     Chooses horizontal options layout when short and simple, else vertical enumerate.
@@ -130,38 +130,39 @@ def question_to_latex(q: dict) -> str:
 
     s = []
     # question as an item in top-level enumerate (caller/template handles outer enumerate)
-    s.append("\\item " + question_text + "\n")
+    s.append("\\question " + question_text + "\n")
 
-    # correct = (meta.get("answer") or "").strip().upper()
+    correct_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
+    flags = [
+        "1" if "A" in correct_letters else "0",
+        "1" if "B" in correct_letters else "0",
+        "1" if "C" in correct_letters else "0",
+        "1" if "D" in correct_letters else "0",
+    ]
     if all(opt_texts.values()):
-        if use_horizontal:
-            # use the `OptionRow` macro to render options in a single horizontal row
-            opt_args = []
-            for letter in opt_order:
-                body = opt_texts[letter]
-                # ensure each argument is TeX safe (already escaped)
-                opt_args.append(body)
-            # use the OptionRow macro: pass four parameters
-            # join with ' & ' handled by the macro; here we build the macro call
-            macro_call = "\\OptionRow{" + "}{".join(opt_args) + "}"
-            s.append(macro_call + "\n")
-        else:
-            # fallback to vertical options using nested enumerate
-            s.append("\\begin{enumerate}\n")
-            for letter in opt_order:
-                s.append("\\item " + opt_texts[letter] + "\n")
-            s.append("\\end{enumerate}\n")
+        opt_args = []
+        for letter in opt_order:
+            body = opt_texts[letter]
+            # ensure each argument is TeX safe (already escaped)
+            opt_args.append(body)
+        macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
+        for flag in flags:
+            macro_call = macro_call + f"{{{flag}}}"
+        for opt in opt_args:
+            macro_call = macro_call + f"{{{opt}}}"
+        s.append(macro_call + "\n")
 
     # Solution (always included in .tex; printing controlled by template)
     sol_text = q.get("solution", "") or ""
+    solution = []
+    solution.append("\\begin{solution}\n\\begin{enumerate}\n")
     if sol_text:
         sol_text_md = md_to_latex_minimal(sol_text)
         sol_text_tex = escape_latex(sol_text_md)
-        s.append("\\begin{solution}")
-        s.append(sol_text_tex)
-        s.append("\\end{solution}\n")
+        solution.append(r"\item " + sol_text_tex)
+    solution.append("\\end{enumerate}\n\\end{solution}\n")
 
-    return "\n".join(s)
+    return "\n".join(s), "\n".join(solution)
 
 
 def render_latex_template_simple(
@@ -169,6 +170,7 @@ def render_latex_template_simple(
     title: str,
     date_str: str,
     questions_tex: str,
+    solutions_tex: str,
     show_solutions: bool,
     answer_block: str | None = None,
 ) -> str:
@@ -190,6 +192,7 @@ def render_latex_template_simple(
     out = out.replace("<<<TITLE>>>", escape_latex(title))
     out = out.replace("<<<DATE>>>", escape_latex(date_str))
     out = out.replace("<<<QUESTIONS_BLOCK>>>", questions_tex)
+    out = out.replace("<<<SOLUTIONS_BLOCK>>>", solutions_tex)
     out = out.replace("<<<ANSWER_KEY_BLOCK>>>", answer_block)
 
     return out  # noqa: RET504
@@ -315,6 +318,7 @@ else:
         tex_name = OUTPUT_DIR / f"Q_{timestamp}.tex"
 
         question_fragments = []
+        solution_fragments = []
         for q in chosen:
             # update the file of `q` if the checkbox is checked
             if update_last_used:
@@ -334,12 +338,11 @@ else:
                 )
                 write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
-            question_fragments.append(question_to_latex(q))
+            question, solution = question_to_latex(q)
+            question_fragments.append(question)
+            solution_fragments.append(solution)
 
-        # questions_tex now should be a sequence of \item ... entries
-        questions_tex = "\n\n".join(question_fragments)
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
-
         answer_block = ""
         if include_solutions:
             answer_key_rows = []
@@ -358,7 +361,8 @@ else:
             template_path,
             title=title,
             date_str=date_str,
-            questions_tex=questions_tex,
+            questions_tex="\n\n".join(question_fragments),
+            solutions_tex="\n\n".join(solution_fragments),
             show_solutions=include_solutions,
             answer_block=answer_block,
         )
