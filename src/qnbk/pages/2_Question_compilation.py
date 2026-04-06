@@ -139,6 +139,8 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         "1" if "C" in correct_letters else "0",
         "1" if "D" in correct_letters else "0",
     ]
+    if not all(opt_texts.values()):
+        opt_texts = {"A": "REPLACEME", "B": "REPLACEME", "C": "REPLACEME", "D": "REPLACEME"}
     if all(opt_texts.values()):
         opt_args = []
         mc_text = "\\begin{mcanswers}\n"
