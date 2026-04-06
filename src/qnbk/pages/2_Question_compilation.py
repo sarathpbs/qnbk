@@ -141,26 +141,40 @@ def question_to_latex(q: dict) -> tuple[str, str]:
     ]
     if all(opt_texts.values()):
         opt_args = []
-        for letter in opt_order:
+        mc_text = "\\begin{mcanswers}\n"
+        if use_horizontal:
+            mc_text += "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
+        for opt_num, (flag, letter) in enumerate(zip(flags, opt_order, strict=False)):
             body = opt_texts[letter]
             # ensure each argument is TeX safe (already escaped)
             opt_args.append(body)
-        macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
-        for flag in flags:
-            macro_call = macro_call + f"{{{flag}}}"
-        for opt in opt_args:
-            macro_call = macro_call + f"{{{opt}}}"
-        s.append(macro_call + "\n")
+            if flag:
+                mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer[correct]{{{opt_num + 1}}}{{{body}}}"
+            else:
+                mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer{{{opt_num + 1}}}{{{body}}}"
+            if use_horizontal and opt_num % 2 == 0:
+                mc_text += " & "
+            else:
+                mc_text += " \\\\\n"
+        if use_horizontal:
+            mc_text += "\\end{tabular}\n"
+        mc_text += "\\end{mcanswers}\n"
+        s.append(mc_text)
+
+        # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
+        # for flag in flags:
+        #     macro_call = macro_call + f"{{{flag}}}"
+        # for opt in opt_args:
+        #     macro_call = macro_call + f"{{{opt}}}"
+        # s.append(macro_call + "\n")
 
     # Solution (always included in .tex; printing controlled by template)
     sol_text = q.get("solution", "") or ""
     solution = []
-    solution.append("\\begin{solution}\n\\begin{enumerate}\n")
     if sol_text:
         sol_text_md = md_to_latex_minimal(sol_text)
         sol_text_tex = escape_latex(sol_text_md)
         solution.append(r"\item " + sol_text_tex)
-    solution.append("\\end{enumerate}\n\\end{solution}\n")
 
     return "\n".join(s), "\n".join(solution)
 
