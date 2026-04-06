@@ -12,6 +12,7 @@
 \usepackage{tabularx}    % flexible-width table for horizontal options
 \usepackage{array}
 \usepackage{graphicx}
+\usepackage{caption}
 \usepackage[output=exam,randomizequestions=false,randomizeanswers=false]{mcexam}
 \usepackage{tabularx}
 
@@ -19,37 +20,6 @@
 % A column type for balanced columns (uses tabularx)
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
-% Helper macro to render 4 options in a 2x2 table with labels
-% Usage: \OptionRow{A-text}{B-text}{C-text}{D-text}
-\newcommand{\OptionRow}[4]{%
-  \begin{tabularx}{\textwidth}{@{}Y Y@{}}%
-    \textbf{A.}~#1 & \textbf{B.}~#2 \\
-    \textbf{C.}~#3 & \textbf{D.}~#4%
-  \end{tabularx}%
-}
-
-\newcommand{\OptionGrid}[8]{%
-  % #1-#4 = correctness flags for A-D, 1 = correct, 0 = not correct
-  % #5-#8 = option texts A-D
-  \begin{mcanswers}
-    \begin{tabular}{p{0.48\textwidth} p{0.48\textwidth}}
-      \answernum{1}~\ifnum#1=1 \answer[correct]{1}{#5}\else \answer{1}{#5}\fi &
-      \answernum{2}~\ifnum#2=1 \answer[correct]{2}{#6}\else \answer{2}{#6}\fi \\
-      \answernum{3}~\ifnum#3=1 \answer[correct]{3}{#7}\else \answer{3}{#7}\fi &
-      \answernum{4}~\ifnum#4=1 \answer[correct]{4}{#8}\else \answer{4}{#8}\fi \\
-    \end{tabular}
-  \end{mcanswers}
-}
-\newcommand{\OptionList}[8]{%
-  % #1-#4 = correctness flags for A-D, 1 = correct, 0 = not correct
-  % #5-#8 = option texts A-D
-  \begin{mcanswers}
-      \answernum{1}~\ifnum#1=1 \answer[correct]{1}{#5}\else \answer{1}{#5}\fi \\
-      \answernum{2}~\ifnum#2=1 \answer[correct]{2}{#6}\else \answer{2}{#6}\fi \\
-      \answernum{3}~\ifnum#3=1 \answer[correct]{3}{#7}\else \answer{3}{#7}\fi \\
-      \answernum{4}~\ifnum#4=1 \answer[correct]{4}{#8}\else \answer{4}{#8}\fi \\
-  \end{mcanswers}
-}
 
 % ----- ENUMERATE LABEL SETTINGS (no enumitem needed) -----
 % First level: 1., 2., 3., ...
@@ -94,9 +64,14 @@
 \begin{mcquestions}
 <<<QUESTIONS_BLOCK>>>
 \end{mcquestions}
-
+\clearpage
 \pagebreak
+\begin{solution}
+\begin{enumerate}
 <<<SOLUTIONS_BLOCK>>>
+\clearpage
+\end{enumerate}
+\end{solution}
 \pagebreak
 <<<ANSWER_KEY_BLOCK>>>
 
