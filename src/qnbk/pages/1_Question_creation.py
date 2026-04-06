@@ -93,11 +93,7 @@ def main() -> None:
         output_dir = Path(output_dir.strip()) / f"Class-{class_num}" / topic
 
         difficulty_options = ["", "Easy", "Medium", "Hard"]
-        loaded_difficulty = ""
-        difficulty_index = (
-            difficulty_options.index(loaded_difficulty) if loaded_difficulty in difficulty_options else 0
-        )
-        difficulty = st.selectbox("Difficulty", difficulty_options, index=difficulty_index)
+        difficulty = st.selectbox("Difficulty", difficulty_options, index=0)
         prev_year = st.text_input("Years in which this appeared (optional)", help="e.g. 2023", value="")
         extra_meta_text = st.text_area(
             "Extra metadata (as JSON) — optional",

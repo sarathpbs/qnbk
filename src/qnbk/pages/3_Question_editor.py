@@ -187,7 +187,16 @@ if raw:
     meta_keys = list(meta.keys())
     edited_meta = {}
     for k in meta_keys:
-        edited_meta[k] = st.text_input(f"{k}", value=meta.get(k, ""), key=f"meta_{k}")
+        if k not in ["difficulty"]:
+            edited_meta[k] = st.text_input(f"{k}", value=meta.get(k, ""), key=f"meta_{k}")
+        else:
+            difficulty_options = ["", "Easy", "Medium", "Hard"]
+            loaded_difficulty = meta.get("difficulty", "")
+            edited_meta[k] = st.selectbox(
+                "Difficulty",
+                difficulty_options,
+                index=difficulty_options.index(loaded_difficulty) if loaded_difficulty in difficulty_options else 0,
+            )
     # allow adding a new metadata key
     new_key = st.text_input("Add new metadata key name (leave blank to skip)", value="", key="new_meta_key")
     if new_key.strip():
