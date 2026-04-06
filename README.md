@@ -156,6 +156,24 @@ Notes:
 - Export has unexpected formatting:
   - inspect generated `.tex` in `output/` for escaped characters/math delimiters
 
+### ✅ Recommended Pattern for Images
+
+Instead of using figure, use inline rendering:
+```tex
+\begin{center}
+\includegraphics[width=0.6\textwidth]{image}
+\end{center}
+```
+#### Optional Caption Replacement
+
+If a caption is needed, use `\captionof` without the figure environment:
+```tex
+\begin{center}
+\includegraphics[width=0.6\textwidth]{image}
+\captionof{figure}{Your image caption.}
+\end{center}
+```
+
 ## Author
 
 - BalajiSeshaSarath.Pokuri
