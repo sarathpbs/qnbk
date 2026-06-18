@@ -140,8 +140,8 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         "1" if "D" in correct_letters else "0",
     ]
     if not all(opt_texts.values()):
-        opt_texts = {"A": "REPLACEME", "B": "REPLACEME", "C": "REPLACEME", "D": "REPLACEME"}
-    if all(opt_texts.values()):
+        mc_text = "\\begin{mcanswers}[permutenone]\n \\answer[correct]{1}{} \n\\end{mcanswers}"
+    else:
         opt_args = []
         mc_text = "\\begin{mcanswers}\n"
         if use_horizontal:
@@ -161,14 +161,14 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         if use_horizontal:
             mc_text += "\\end{tabular}\n"
         mc_text += "\\end{mcanswers}\n"
-        s.append(mc_text)
+    s.append(mc_text)
 
-        # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
-        # for flag in flags:
-        #     macro_call = macro_call + f"{{{flag}}}"
-        # for opt in opt_args:
-        #     macro_call = macro_call + f"{{{opt}}}"
-        # s.append(macro_call + "\n")
+    # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
+    # for flag in flags:
+    #     macro_call = macro_call + f"{{{flag}}}"
+    # for opt in opt_args:
+    #     macro_call = macro_call + f"{{{opt}}}"
+    # s.append(macro_call + "\n")
 
     # Solution (always included in .tex; printing controlled by template)
     sol_text = q.get("solution", "") or ""
@@ -176,7 +176,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
     if sol_text:
         sol_text_md = md_to_latex_minimal(sol_text)
         sol_text_tex = escape_latex(sol_text_md)
-        solution.append(r"\item " + sol_text_tex)
+        solution.append(sol_text_tex)
 
     return "\n".join(s), "\n".join(solution)
 
@@ -335,7 +335,7 @@ else:
 
         question_fragments = []
         solution_fragments = []
-        for q in chosen:
+        for q_id, q in enumerate(chosen):
             # update the file of `q` if the checkbox is checked
             if update_last_used:
                 q["meta"]["last_used"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
@@ -356,7 +356,8 @@ else:
             q["options"] = q.get("options", {})
             question, solution = question_to_latex(q)
             question_fragments.append(question)
-            solution_fragments.append(solution)
+            if solution:
+                solution_fragments.append(str(q_id + 1) + ")\t" + solution + "\n")
 
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
         answer_block = ""
