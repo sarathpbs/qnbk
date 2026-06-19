@@ -171,12 +171,12 @@ def question_to_latex(q: dict) -> tuple[str, str]:
     # s.append(macro_call + "\n")
 
     # Solution (always included in .tex; printing controlled by template)
-    sol_text = q.get("solution", "") or ""
+    sol_text = q.get("solution", "NO SOLUTION") or "NO SOLUTION"
     solution = []
     if sol_text:
         sol_text_md = md_to_latex_minimal(sol_text)
         sol_text_tex = escape_latex(sol_text_md)
-        solution.append(sol_text_tex)
+        solution.append("\\item " + sol_text_tex)
 
     return "\n".join(s), "\n".join(solution)
 
@@ -335,7 +335,7 @@ else:
 
         question_fragments = []
         solution_fragments = []
-        for q_id, q in enumerate(chosen):
+        for q in chosen:
             # update the file of `q` if the checkbox is checked
             if update_last_used:
                 q["meta"]["last_used"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
@@ -356,8 +356,7 @@ else:
             q["options"] = q.get("options", {})
             question, solution = question_to_latex(q)
             question_fragments.append(question)
-            if solution:
-                solution_fragments.append(str(q_id + 1) + ")\t" + solution + "\n")
+            solution_fragments.append(solution)
 
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
         answer_block = ""
