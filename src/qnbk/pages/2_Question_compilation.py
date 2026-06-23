@@ -150,7 +150,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
             body = opt_texts[letter]
             # ensure each argument is TeX safe (already escaped)
             opt_args.append(body)
-            if flag:
+            if flag == "1":
                 mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer[correct]{{{opt_num + 1}}}{{{body}}}"
             else:
                 mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer{{{opt_num + 1}}}{{{body}}}"
