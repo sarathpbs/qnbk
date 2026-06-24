@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Question Bank
+Comment=Launch the Question Bank Streamlit App
+Exec=/home/ranga/qnbk/run.sh
+Icon=accessories-dictionary
+Terminal=true
+Categories=Education;Development;
+Path=/home/ranga/qnbk
