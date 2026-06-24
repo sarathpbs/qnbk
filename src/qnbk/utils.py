@@ -84,6 +84,7 @@ def read_question_file(path: Path, qns_dir: Path = "data") -> dict:
     meta.setdefault("class", "Unknown")
     meta.setdefault("last_used", "")
     meta.setdefault("prev_year", "")
+    meta.setdefault("source", "")
 
     body = body.rstrip("\n")
     body_without_solution, extracted_solution = split_solution_from_body(body)
@@ -112,3 +113,158 @@ def read_question_file(path: Path, qns_dir: Path = "data") -> dict:
         "filename": path.name,
         "relpath": str(path.relative_to(qns_dir)) if qns_dir in path.parents or path == qns_dir else str(path),
     }
+
+
+def render_chemistry_preview(markdown_content: str, height: int = 400):
+    """Renders a beautiful real-time preview of the markdown content with full MathJax + mhchem support."""
+    import json
+    import streamlit.components.v1 as components
+
+    # JSON-serialize the markdown string to safely insert it into JS
+    js_content = json.dumps(markdown_content)
+
+    html_code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+          displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
+          processEscapes: true,
+          packages: {'[+]': ['mhchem']}
+        },
+        loader: {load: ['[tex]/mhchem']}
+      };
+      </script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+      <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          font-size: 15px;
+          line-height: 1.6;
+          color: #31333F; /* Streamlit default text color */
+          background-color: transparent;
+          margin: 0;
+          padding: 10px;
+        }
+        pre {
+          background-color: #f0f2f6;
+          padding: 10px;
+          border-radius: 4px;
+          overflow-x: auto;
+        }
+        code {
+          font-family: monospace;
+          background-color: #f0f2f6;
+          padding: 2px 4px;
+          border-radius: 3px;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-bottom: 1rem;
+        }
+        th, td {
+          border: 1px solid #e6e9ef;
+          padding: 8px;
+          text-align: left;
+        }
+        th {
+          background-color: #f8f9fa;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="content"></div>
+      <script>
+        try {
+          let markdownText = <<<JS_CONTENT>>>;
+          
+          // Preprocess to wrap \\ce{...} outside math mode in \\( \\ce{...} \\)
+          const parts = markdownText.split(/(\\$\\$[\\s\\S]*?\\$\\$|\\$[^\\$]*?\\$|\\\\\\[[\\s\\S]*?\\\\\\]|\\\\\\([\\s\\S]*?\\\\\\))/g);
+          for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 0) {
+              parts[i] = parts[i].replace(/\\\\ce\\{([^{}]*(?:\\{[^{}]*\\}[^{}]*)*)\\}/g, '$$\\\\ce{$1}$$');
+            }
+          }
+          markdownText = parts.join('');
+          
+          document.getElementById('content').innerHTML = marked.parse(markdownText);
+          
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          } else {
+            document.getElementById('MathJax-script').addEventListener('load', () => {
+              window.MathJax.typeset();
+            });
+          }
+        } catch (e) {
+          document.getElementById('content').innerHTML = "<p style='color:red;'>Preview Error: " + e.message + "</p>";
+        }
+      </script>
+    </body>
+    </html>
+    """.replace("<<<JS_CONTENT>>>", js_content)
+    components.html(html_code, height=height, scrolling=True)
+
+
+def chemistry_help_panel():
+    """Renders a collapsible sidebar/expander containing a chemistry syntax guide with copy-pasteable snippets."""
+    import streamlit as st
+
+    with st.expander("🧪 Chemistry Writing Guide (mhchem & chemfig)"):
+        st.markdown("""
+        Use the following syntax in the text fields. It will render beautifully in the PDF export and in the **Chemistry Preview** tab.
+
+        ### 1. Inorganic Formulas & Reactions (`\\ce{...}`)
+        Wrap formulas and chemical reactions in `\\ce{...}`. You don't need to put it inside math mode.
+
+        * **Simple Formulas**:
+          * Code: `\\ce{H2O}` &rarr; $H_2O$
+          * Code: `\\ce{H2SO4}` &rarr; $H_2SO_4$
+          * Code: `\\ce{NO3-}` &rarr; $NO_3^-$
+        * **Reactions & Arrows**:
+          * Code: `\\ce{2H2 + O2 -> 2H2O}` &rarr; $2H_2 + O_2 \\rightarrow 2H_2O$
+          * Code: `\\ce{N2 + 3H2 <=> 2NH3}` &rarr; $N_2 + 3H_2 \\rightleftharpoons 2NH_3$
+          * Code: `\\ce{A ->[catalyst][heat] B}` &rarr; arrow with text above/below
+        * **Ions & Charges**:
+          * Code: `\\ce{Na+ + Cl- -> NaCl}` &rarr; $Na^+ + Cl^- \\rightarrow NaCl$
+          * Code: `\\ce{Fe^2+ + Ce^4+ -> Fe^3+ + Ce^3+}` &rarr; $Fe^{2+} + Ce^{4+} \\rightarrow Fe^{3+} + Ce^{3+}$
+        * **Matter States & Gas/Precipitate**:
+          * Code: `\\ce{Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g) ^}` &rarr; $\\ce{Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g) ^}$
+
+        ### 2. Organic Chemistry & Structures (`\\chemfig{...}`)
+        *Note: structures will render perfectly in the exported PDF, but will display as raw TeX in the Streamlit preview.*
+
+        * **Bonds**:
+          * Code: `\\chemfig{A-B}` (Single)
+          * Code: `\\chemfig{A=B}` (Double)
+          * Code: `\\chemfig{A~B}` (Triple)
+        * **Branches**:
+          * Code: `\\chemfig{C(-[2]H)(-[4]H)(-[6]H)-H}` (Methane)
+        * **Rings & Cyclic Compounds**:
+          * Code: `\\chemfig{*6(-=-=-=)}` (Benzene)
+          * Code: `\\chemfig{*6(------)}` (Cyclohexane)
+          * Code: `\\chemfig{*6(-=-=N-=)}` (Pyridine)
+        """)
+
+        st.markdown("### Quick Snippets (Click the copy button on the right)")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption("Common Inorganic Formulas")
+            st.code("\\ce{H2O}", language="latex")
+            st.code("\\ce{H2SO4}", language="latex")
+            st.code("\\ce{CO2 + H2O <=> H2CO3}", language="latex")
+            st.code("\\ce{->[heat][catalyst]}", language="latex")
+        with col2:
+            st.caption("Common Organic Structures")
+            st.code("\\chemfig{*6(-=-=-=)}", language="latex")
+            st.code("\\chemfig{*6(------)}", language="latex")
+            st.code("\\chemfig{R-C(=O)-OH}", language="latex")
+            st.code("\\chemfig{C(-[2])(-[4])(-[6])-}", language="latex")
+
