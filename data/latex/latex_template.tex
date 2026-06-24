@@ -13,8 +13,15 @@
 \usepackage{array}
 \usepackage{graphicx}
 \usepackage{caption}
+\usepackage[version=4]{mhchem}
+\usepackage{chemfig}
 \usepackage[output=exam,randomizequestions=false,randomizeanswers=false]{mcexam}
 \usepackage{tabularx}
+
+\usepackage{enumitem}
+\setlist*[setmcquestions]{itemsep=1ex, parsep=0.5ex, topsep=0.5ex}
+\setlist*[setmcanswerslist]{itemsep=0.2ex, parsep=0.2ex, topsep=0.2ex}
+
 
 
 % A column type for balanced columns (uses tabularx)
@@ -61,16 +68,21 @@
 
 \medskip\hrule
 \normalsize
+<<<DIFFICULTY_TOP_BLOCK>>>
 \begin{mcquestions}
 <<<QUESTIONS_BLOCK>>>
 \end{mcquestions}
-\clearpage
-\pagebreak
+
+\ifshowsolution
+  \clearpage
+\fi
 \begin{solution}
 <<<SOLUTIONS_BLOCK>>>
-\clearpage
+\ifshowsolution
+  \clearpage
+\fi
 \end{solution}
-\pagebreak
+
 <<<ANSWER_KEY_BLOCK>>>
 
 \end{document}
