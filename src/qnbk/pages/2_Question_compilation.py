@@ -130,7 +130,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
 
     s = []
     # question as an item in top-level enumerate (caller/template handles outer enumerate)
-    s.append("\\question " + question_text + "\n")
+    s.append("\\question " + question_text + "\n\\vspace{-1em}\n")
 
     correct_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
     flags = [
@@ -140,7 +140,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         "1" if "D" in correct_letters else "0",
     ]
     if not all(opt_texts.values()):
-        mc_text = "\\begin{mcanswers}[permutenone]\n \\answer[correct]{1}{} \n\\end{mcanswers}"
+        mc_text = "\\begin{mcanswers}[permutenone]\n \\answer[correct]{1}{} \n\\end{mcanswers}\n\\vspace{-2em}\n"
     else:
         opt_args = []
         mc_text = "\\begin{mcanswers}\n"
@@ -160,7 +160,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
                 mc_text += " \\\\\n"
         if use_horizontal:
             mc_text += "\\end{tabular}\n"
-        mc_text += "\\end{mcanswers}\n"
+        mc_text += "\\end{mcanswers}\n\\vspace{-2em}\n"
     s.append(mc_text)
 
     # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
@@ -171,7 +171,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
     # s.append(macro_call + "\n")
 
     # Solution (always included in .tex; printing controlled by template)
-    sol_text = q.get("solution", "NO SOLUTION") or "NO SOLUTION"
+    sol_text = q.get("solution", "NO SOLUTION") or "NO SOLUTION PROVIDED"
     solution = []
     if sol_text:
         sol_text_md = md_to_latex_minimal(sol_text)
