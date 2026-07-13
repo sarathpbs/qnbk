@@ -398,6 +398,13 @@ with st.sidebar:
     selected_topics = st.multiselect("Topic(s)", all_topics, default=all_topics)
     selected_difficulties = st.multiselect("Difficulty level(s)", all_difficulties, default=all_difficulties)
 
+    question_type_filter = st.radio(
+        "Question Type:",
+        options=["All", "Objective (with options)", "Subjective (no options)"],
+        index=0,
+        help="Filter by objective (has options) or subjective (no options) questions."
+    )
+
     usage_filter_action = st.radio(
         "Usage Date Filter:",
         options=["All questions", "Hide recently used", "Show only recently used"],
@@ -461,6 +468,13 @@ for q in class_filtered_questions:
     if q["meta"].get("topic") not in selected_topics:
         continue
     if q["meta"].get("difficulty") not in selected_difficulties:
+        continue
+
+    # Filter by question type (objective vs subjective)
+    has_options = any(q.get("options", {}).values())
+    if question_type_filter == "Objective (with options)" and not has_options:
+        continue
+    if question_type_filter == "Subjective (no options)" and has_options:
         continue
     if usage_filter_action != "All questions" and cutoff_date is not None:
         last_used_val = q["meta"].get("last_used")
