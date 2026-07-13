@@ -609,7 +609,7 @@ else:
             question, solution = question_to_latex(q)
             question_fragments.append(question)
             if solution:
-                solution_fragments.append(str(q_id + 1) + ")\t" + solution + "\n")
+                solution_fragments.append(f"\\noindent \\textbf{{{q_id + 1})}} \\quad {solution}\\par\\bigskip\n")
 
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
         answer_block = ""

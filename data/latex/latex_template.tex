@@ -3,7 +3,7 @@
 
 % Basic packages
 \usepackage{amsmath,amssymb}
-\usepackage[left=0.3cm, right=0.3cm, top=0.75cm, bottom=0.75cm]{geometry}
+\usepackage[margin=1cm]{geometry}
 \usepackage{verbatim}    % for comment environment
 \usepackage{hyperref}
 \usepackage{lmodern}
@@ -45,8 +45,8 @@
 % Define solution environment based on showsolution flag
 \ifshowsolution
   \newenvironment{solution}%
-    {\par\smallskip\noindent\textbf{Solution.}\quad}%
-    {\par\smallskip}%
+    {\par\noindent\textbf{\Large Detailed Solutions}\par\bigskip\linespread{1.3}\selectfont}%
+    {\par}%
 \else
   % When showsolution is false, we need to read and discard the environment content
   % Using a simple trick: ignore everything until we hit \end{solution}
@@ -73,16 +73,13 @@
 <<<QUESTIONS_BLOCK>>>
 \end{mcquestions}
 
-\ifshowsolution
-  \clearpage
-\fi
-\begin{solution}
-<<<SOLUTIONS_BLOCK>>>
-\ifshowsolution
-  \clearpage
-\fi
-\end{solution}
-
 <<<ANSWER_KEY_BLOCK>>>
+
+\ifshowsolution
+  \clearpage
+  \begin{solution}
+  <<<SOLUTIONS_BLOCK>>>
+  \end{solution}
+\fi
 
 \end{document}
