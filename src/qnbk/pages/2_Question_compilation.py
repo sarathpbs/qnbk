@@ -189,7 +189,7 @@ def md_to_latex_minimal(md_text: str) -> str:
     return t  # noqa: RET504
 
 
-def question_to_latex(q: dict) -> tuple[str, str]:
+def question_to_latex(q: dict, include_options: bool = True) -> tuple[str, str]:
     """Render one question to LaTeX.
 
     Chooses horizontal options layout when short and simple, else vertical enumerate.
@@ -231,8 +231,8 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         "1" if "C" in correct_letters else "0",
         "1" if "D" in correct_letters else "0",
     ]
-    if not all(opt_texts.values()):
-        mc_text = "\\begin{mcanswers}[permutenone]\n \\answer[correct]{1}{} \n\\end{mcanswers}"
+    if not include_options or not all(opt_texts.values()):
+        mc_text = "\\begin{mcanswers}[permutenone]\n \\answernum{1}~ \\answer[correct]{1}{} \n\\end{mcanswers}"
     else:
         opt_args = []
         mc_text = "\\vspace{-1em}\n\\begin{mcanswers}\n"
@@ -429,8 +429,21 @@ with st.sidebar:
         elif date_preset == "Custom Date...":
             cutoff_date = st.date_input("Select Cutoff Date:", value=current_utc_date)
 
-    include_solutions = st.checkbox("Include detailed solutions in compiled PDF", value=False)
-    include_answer_key = st.checkbox("Include answer key at the end", value=False)
+    solutions_inline = st.checkbox(
+        "Show solutions immediately after each question (options will be hidden)",
+        value=False,
+        help="Only questions with solutions compile. Options are hidden and solutions placed below questions."
+    )
+    include_solutions = st.checkbox(
+        "Include detailed solutions in compiled PDF",
+        value=False,
+        disabled=solutions_inline,
+    )
+    include_answer_key = st.checkbox(
+        "Include answer key at the end",
+        value=False,
+        disabled=solutions_inline,
+    )
 
     compile_pdf = st.checkbox("Compile to PDF", value=True)
 
@@ -576,6 +589,9 @@ if sort_by_difficulty:
     difficulty_order = {"Easy": 0, "Medium": 1, "Hard": 2}
     chosen.sort(key=lambda q: difficulty_order.get(q["meta"].get("difficulty"), 3))
 
+if solutions_inline:
+    chosen = [q for q in chosen if q.get("solution") and q["solution"].strip()]
+
 st.write("---")
 st.markdown(f"**{len(chosen)} selected for export**")
 if len(chosen) == 0:
@@ -602,16 +618,20 @@ else:
                     },
                 }
                 logger.info(
-                    f"Updating last_used for {q['filename']} to {q['meta']['last_used']}; {qdict['body']['options']}"
+                     f"Updating last_used for {q['filename']} to {q['meta']['last_used']}; {qdict['body']['options']}"
                 )
                 write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
-            question, solution = question_to_latex(q)
+            question, solution = question_to_latex(q, include_options=(not solutions_inline))
             # Add a source comment so users can track errors back to the MD file
             source_comment = f"% SOURCE: {q.get('relpath', 'Unknown')}\n"
-            question_fragments.append(source_comment + question)
-            if solution:
-                solution_fragments.append(f"\\noindent \\textbf{{{q_id + 1})}} \\quad {solution}\\par\\bigskip\n")
+            if solutions_inline:
+                sol_formatted = f"\n\n\\par\\medskip\\noindent\\textbf{{Solution:}} {solution}\n"
+                question_fragments.append(source_comment + question + sol_formatted)
+            else:
+                question_fragments.append(source_comment + question)
+                if solution:
+                    solution_fragments.append(f"\\noindent \\textbf{{{q_id + 1})}} \\quad {solution}\\par\\bigskip\n")
 
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
         answer_block = ""
