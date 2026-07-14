@@ -607,7 +607,9 @@ else:
                 write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
             question, solution = question_to_latex(q)
-            question_fragments.append(question)
+            # Add a source comment so users can track errors back to the MD file
+            source_comment = f"% SOURCE: {q.get('relpath', 'Unknown')}\n"
+            question_fragments.append(source_comment + question)
             if solution:
                 solution_fragments.append(f"\\noindent \\textbf{{{q_id + 1})}} \\quad {solution}\\par\\bigskip\n")
 
