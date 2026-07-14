@@ -235,7 +235,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         mc_text = "\\begin{mcanswers}[permutenone]\n \\answer[correct]{1}{} \n\\end{mcanswers}"
     else:
         opt_args = []
-        mc_text = "\\begin{mcanswers}\n"
+        mc_text = "\\vspace{-1em}\n\\begin{mcanswers}\n"
         if use_horizontal:
             mc_text += "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
         for opt_num, (flag, letter) in enumerate(zip(flags, opt_order, strict=False)):
@@ -252,7 +252,7 @@ def question_to_latex(q: dict) -> tuple[str, str]:
                 mc_text += " \\\\\n"
         if use_horizontal:
             mc_text += "\\end{tabular}\n"
-        mc_text += "\\end{mcanswers}\n"
+        mc_text += "\\end{mcanswers}\n\\vspace{-1em}"
     s.append(mc_text)
 
     # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
