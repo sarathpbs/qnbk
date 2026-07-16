@@ -434,6 +434,11 @@ with st.sidebar:
         value=False,
         help="Only questions with solutions compile. Options are hidden and solutions placed below questions."
     )
+    convert_to_subjective = st.checkbox(
+        "Convert objective questions to subjective (hide options)",
+        value=False,
+        help="If checked, objective questions (MCQs) are converted to subjective ones by hiding their options. The answer key will show the option value instead of the letter."
+    )
     include_solutions = st.checkbox(
         "Include detailed solutions in compiled PDF",
         value=False,
@@ -622,7 +627,8 @@ else:
                 )
                 write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
-            question, solution = question_to_latex(q, include_options=(not solutions_inline))
+            include_opts = (not solutions_inline) and (not convert_to_subjective)
+            question, solution = question_to_latex(q, include_options=include_opts)
             # Add a source comment so users can track errors back to the MD file
             source_comment = f"% SOURCE: {q.get('relpath', 'Unknown')}\n"
             if solutions_inline:
@@ -644,8 +650,18 @@ else:
                 is_mcq_option = len(possible_letters) > 0 and all(x in ["A", "B", "C", "D"] for x in possible_letters)
                 
                 if is_mcq_option:
-                    display = ",".join(possible_letters)
-                    display_escaped = escape_latex(display)
+                    if convert_to_subjective:
+                        # Convert option letters to their actual values
+                        values = []
+                        for letter in possible_letters:
+                            val_raw = q.get("options", {}).get(letter, "")
+                            val_md = md_to_latex_minimal(val_raw)
+                            val_tex = escape_latex(val_md)
+                            values.append(val_tex)
+                        display_escaped = ", ".join(values)
+                    else:
+                        display = ",".join(possible_letters)
+                        display_escaped = escape_latex(display)
                 else:
                     ans_tex = md_to_latex_minimal(answer_raw)
                     display_escaped = escape_latex(ans_tex)
