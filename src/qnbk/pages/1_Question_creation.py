@@ -8,7 +8,7 @@ import streamlit as st
 from loguru import logger
 
 from qnbk import DEFAULT_QUESTIONS_DIR
-from qnbk.utils import write_md_file
+from qnbk.utils import write_md_file, render_chemistry_preview, chemistry_help_panel
 
 QUESTIONS_DIR = DEFAULT_QUESTIONS_DIR
 
@@ -41,6 +41,7 @@ def build_question_dict(
     class_num: str,
     difficulty: str,
     prev_year: str,
+    source: str,
     question: str,
     options: dict | None,
     solution_text: str,
@@ -54,6 +55,7 @@ def build_question_dict(
         "difficulty": difficulty or "",
         "answer": correct_option or "",
         "prev_year": prev_year or "",
+        "source": source or "",
         "last_used": "",
     }
     # include any extra metadata fields
@@ -82,19 +84,22 @@ def main() -> None:
     st.set_page_config(page_title="Question Bank Creator", layout="wide")
     st.title("Question File Creator/Editor — Question Bank format")
 
-    output_dir = st.text_input("Output directory (relative to project root)", value=QUESTIONS_DIR)
+    output_dir_base = st.text_input("Output directory (relative to project root)", value=str(QUESTIONS_DIR))
 
-    with st.form("qform"):
+    left_col, right_col = st.columns([1, 1], gap="large")
+
+    with left_col:
         st.subheader("Question metadata")
         topic = st.text_input("Topic (e.g. algebra, geometry)", value="")
         topic = topic.strip().capitalize() if topic else ""
         class_num = st.selectbox("Class", ["XII", "XI", "X", "IX", "VIII"], index=0)
 
-        output_dir = Path(output_dir.strip()) / f"Class-{class_num}" / topic
+        resolved_output_dir = Path(output_dir_base.strip()) / f"Class-{class_num}" / topic
 
         difficulty_options = ["", "Easy", "Medium", "Hard"]
         difficulty = st.selectbox("Difficulty", difficulty_options, index=0)
         prev_year = st.text_input("Years in which this appeared (optional)", help="e.g. 2023", value="")
+        source = st.text_input("Source (optional)", help="e.g. NCERT, JEE 2024", value="")
         extra_meta_text = st.text_area(
             "Extra metadata (as JSON) — optional",
             placeholder='{"learning_objective":"LO1", "chapter": 3}',
@@ -114,13 +119,13 @@ def main() -> None:
         logger.info(f"{options=}")
 
         correct_answers = st.text_input(
-            "Correct answers (if multiple-choice)",
-            help="Leave blank for non-MCQ or when you don't want the correct option set here",
+            "Correct answer(s)",
+            help="Enter the option letter(s) (e.g. A, B) or the text/LaTeX answer for open-response (e.g. \\ce{CaCO3}).",
         )
 
         solution_text = st.text_area("Solution", height=200, value="")
 
-        generated_file_name = f"q_{generate_id(output_dir)}.md"
+        generated_file_name = f"q_{generate_id(resolved_output_dir)}.md"
 
         st.subheader("Output options")
         filename_override = st.text_input(
@@ -130,10 +135,35 @@ def main() -> None:
         )
         logger.info(f"Filename override: {filename_override}")
 
-        submit = st.form_submit_button("Create question file")
+        submit = st.button("Create question file")
+
+    with right_col:
+        tab_preview, tab_guide = st.tabs(["🧪 Chemistry Preview", "📖 Writing Guide"])
+        
+        with tab_preview:
+            st.markdown("### Real-time Rendered Preview")
+            # Build preview markdown
+            preview_md = f"### Question\n\n{question_text}\n\n"
+            
+            # Check if any options are filled
+            non_empty_opts = {k: v for k, v in options.items() if v.strip()}
+            if non_empty_opts:
+                preview_md += "#### Options\n"
+                for label in ["A", "B", "C", "D"]:
+                    opt_val = options.get(label, "")
+                    if opt_val.strip():
+                        preview_md += f"* **Option {label}**: {opt_val}\n"
+            
+            if solution_text.strip():
+                preview_md += f"\n\n#### Solution\n{solution_text}"
+                
+            render_chemistry_preview(preview_md, height=600)
+            
+        with tab_guide:
+            chemistry_help_panel()
 
     if submit:
-        ensure_output_dir(output_dir)
+        ensure_output_dir(resolved_output_dir)
         extra_meta = {}
         if extra_meta_text.strip():
             try:
@@ -147,6 +177,7 @@ def main() -> None:
             class_num=class_num,
             difficulty=difficulty,
             prev_year=prev_year,
+            source=source,
             question=question_text,
             options=options,
             solution_text=solution_text,
@@ -154,7 +185,7 @@ def main() -> None:
             extra_metadata=extra_meta if extra_meta else None,
         )
 
-        filepath = os.path.join(output_dir, filename_override)
+        filepath = os.path.join(resolved_output_dir, filename_override)
 
         # write file
         try:
