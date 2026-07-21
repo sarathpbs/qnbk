@@ -3,6 +3,7 @@
 import re
 from pathlib import Path
 
+import streamlit as st
 import yaml
 from loguru import logger
 
@@ -115,10 +116,9 @@ def read_question_file(path: Path, qns_dir: Path = "data") -> dict:
     }
 
 
-def render_chemistry_preview(markdown_content: str, height: int = 400):
-    """Renders a beautiful real-time preview of the markdown content with full MathJax + mhchem support."""
-    import json
-    import streamlit.components.v1 as components
+def render_chemistry_preview(markdown_content: str, height: int = 400) -> None:
+    """Render a beautiful real-time preview of the markdown content with full MathJax + mhchem support."""
+    import json  # noqa: PLC0415
 
     # JSON-serialize the markdown string to safely insert it into JS
     js_content = json.dumps(markdown_content)
@@ -184,18 +184,19 @@ def render_chemistry_preview(markdown_content: str, height: int = 400):
       <script>
         try {
           let markdownText = <<<JS_CONTENT>>>;
-          
+
           // Preprocess to wrap \\ce{...} outside math mode in \\( \\ce{...} \\)
-          const parts = markdownText.split(/(\\$\\$[\\s\\S]*?\\$\\$|\\$[^\\$]*?\\$|\\\\\\[[\\s\\S]*?\\\\\\]|\\\\\\([\\s\\S]*?\\\\\\))/g);
+          const parts = markdownText.split(/(\\$\\$[\\s\\S]*?\\$\\$|\\$[^\\$]*?\\$|\\\\\\[[\\s\\S]*?\\\\\\]
+          |\\\\\\([\\s\\S]*?\\\\\\))/g);
           for (let i = 0; i < parts.length; i++) {
             if (i % 2 === 0) {
               parts[i] = parts[i].replace(/\\\\ce\\{([^{}]*(?:\\{[^{}]*\\}[^{}]*)*)\\}/g, '$$\\\\ce{$1}$$');
             }
           }
           markdownText = parts.join('');
-          
+
           document.getElementById('content').innerHTML = marked.parse(markdownText);
-          
+
           if (window.MathJax && window.MathJax.typeset) {
             window.MathJax.typeset();
           } else {
@@ -210,16 +211,15 @@ def render_chemistry_preview(markdown_content: str, height: int = 400):
     </body>
     </html>
     """.replace("<<<JS_CONTENT>>>", js_content)
-    components.html(html_code, height=height, scrolling=True)
+    st.iframe(html_code, height=height)
 
 
-def chemistry_help_panel():
-    """Renders a collapsible sidebar/expander containing a chemistry syntax guide with copy-pasteable snippets."""
-    import streamlit as st
-
+def chemistry_help_panel() -> None:
+    """Render a collapsible sidebar/expander containing a chemistry syntax guide with copy-pasteable snippets."""
     with st.expander("🧪 Chemistry Writing Guide (mhchem & chemfig)"):
         st.markdown("""
-        Use the following syntax in the text fields. It will render beautifully in the PDF export and in the **Chemistry Preview** tab.
+        Use the following syntax in the text fields. It will render beautifully in the PDF export and in the
+        **Chemistry Preview** tab.
 
         ### 1. Inorganic Formulas & Reactions (`\\ce{...}`)
         Wrap formulas and chemical reactions in `\\ce{...}`. You don't need to put it inside math mode.
@@ -236,10 +236,10 @@ def chemistry_help_panel():
           * Code: `\\ce{Na+ + Cl- -> NaCl}` &rarr; $Na^+ + Cl^- \\rightarrow NaCl$
           * Code: `\\ce{Fe^2+ + Ce^4+ -> Fe^3+ + Ce^3+}` &rarr; $Fe^{2+} + Ce^{4+} \\rightarrow Fe^{3+} + Ce^{3+}$
         * **Matter States & Gas/Precipitate**:
-          * Code: `\\ce{Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g) ^}` &rarr; $\\ce{Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g) ^}$
+          * Code: `\\ce{Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g) ^}`&rarr; $\\ce{Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g) ^}$
 
         ### 2. Organic Chemistry & Structures (`\\chemfig{...}`)
-        *Note: structures will render perfectly in the exported PDF, but will display as raw TeX in the Streamlit preview.*
+        *Note: structures will render perfectly in the exported PDF, but will display as raw TeX in the St preview.*
 
         * **Bonds**:
           * Code: `\\chemfig{A-B}` (Single)
@@ -267,4 +267,3 @@ def chemistry_help_panel():
             st.code("\\chemfig{*6(------)}", language="latex")
             st.code("\\chemfig{R-C(=O)-OH}", language="latex")
             st.code("\\chemfig{C(-[2])(-[4])(-[6])-}", language="latex")
-

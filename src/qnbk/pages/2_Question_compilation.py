@@ -3,13 +3,14 @@
 import datetime
 import re
 import subprocess
+from itertools import groupby
 from pathlib import Path
 
 import streamlit as st
 from loguru import logger
 
 from qnbk import DEFAULT_LATEX_EXPORT_DIR, DEFAULT_QUESTIONS_DIR, DEFAULT_TEMPLATE_DIR, DEFAULT_TEMPLATE_NAME
-from qnbk.utils import read_question_file, write_md_file, render_chemistry_preview
+from qnbk.utils import read_question_file, write_md_file
 
 # ---------------------------
 # Configuration
@@ -57,7 +58,7 @@ LATEX_SPECIALS = {
 
 
 def find_matching_bracket(s: str, start_idx: int, open_char: str, close_char: str) -> int:
-    """Finds the index of the matching closing bracket/brace, handling nesting."""
+    """Find the index of the matching closing bracket/brace, handling nesting."""
     depth = 0
     for idx in range(start_idx, len(s)):
         char = s[idx]
@@ -132,7 +133,7 @@ def escape_latex(s: str) -> str:
                 if j != -1:
                     end_idx = j + len(end_str)
                     token = f"@@MATH{token_idx}@@"
-                    replacements[token] = s[i : end_idx]
+                    replacements[token] = s[i:end_idx]
                     token_idx += 1
                     result.append(token)
                     i = end_idx
@@ -278,8 +279,6 @@ def generate_difficulty_note(questions: list[dict]) -> str:
     if not questions:
         return ""
 
-    from itertools import groupby
-
     items = []
     for idx, q in enumerate(questions, 1):
         diff = q["meta"].get("difficulty") or "Unknown"
@@ -290,12 +289,9 @@ def generate_difficulty_note(questions: list[dict]) -> str:
         grp_list = list(grp)
         start_idx = grp_list[0][0]
         end_idx = grp_list[-1][0]
-        
+
         diff_lower = diff.lower()
-        if diff_lower == "hard":
-            diff_display = "difficult"
-        else:
-            diff_display = diff_lower
+        diff_display = "difficult" if diff_lower == "hard" else diff_lower
 
         if idx_range == 0:
             # First range has the prefix "question" or "questions"
@@ -402,22 +398,20 @@ with st.sidebar:
         "Question Type:",
         options=["All", "Objective (with options)", "Subjective (no options)"],
         index=0,
-        help="Filter by objective (has options) or subjective (no options) questions."
+        help="Filter by objective (has options) or subjective (no options) questions.",
     )
 
     usage_filter_action = st.radio(
         "Usage Date Filter:",
         options=["All questions", "Hide recently used", "Show only recently used"],
         index=0,
-        help="Filter questions based on their 'last_used' date."
+        help="Filter questions based on their 'last_used' date.",
     )
 
     cutoff_date = None
     if usage_filter_action != "All questions":
         date_preset = st.selectbox(
-            "Select Time Window:",
-            options=["1 Month", "3 Months", "1 Year", "Custom Date..."],
-            index=0
+            "Select Time Window:", options=["1 Month", "3 Months", "1 Year", "Custom Date..."], index=0
         )
         current_utc_date = datetime.datetime.now(datetime.timezone.utc).date()
         if date_preset == "1 Month":
@@ -432,12 +426,13 @@ with st.sidebar:
     solutions_inline = st.checkbox(
         "Show solutions immediately after each question (options will be hidden)",
         value=False,
-        help="Only questions with solutions compile. Options are hidden and solutions placed below questions."
+        help="Only questions with solutions compile. Options are hidden and solutions placed below questions.",
     )
     convert_to_subjective = st.checkbox(
         "Convert objective questions to subjective (hide options)",
         value=False,
-        help="If checked, objective questions (MCQs) are converted to subjective ones by hiding their options. The answer key will show the option value instead of the letter."
+        help="If checked, objective questions (MCQs) are converted to subjective ones by hiding their options. "
+        "The answer key will show the option value instead of the letter.",
     )
     include_solutions = st.checkbox(
         "Include detailed solutions in compiled PDF",
@@ -504,13 +499,13 @@ for q in class_filtered_questions:
                 last_used_date = last_used_val.date()
             elif isinstance(last_used_val, str):
                 try:
-                    last_used_date = datetime.datetime.strptime(last_used_val.strip(), "%Y-%m-%d").date()
-                except ValueError:
-                    pass
+                    last_used_date = datetime.datetime.strptime(last_used_val.strip(), "%Y-%m-%d").date()  # noqa:DTZ007
+                except ValueError as e:
+                    logger.error(e)
         is_recent = last_used_date is not None and last_used_date >= cutoff_date
-        if usage_filter_action == "Hide recently used" and is_recent:
-            continue
-        elif usage_filter_action == "Show only recently used" and not is_recent:
+        if (usage_filter_action == "Hide recently used" and is_recent) or (
+            usage_filter_action == "Show only recently used" and not is_recent
+        ):
             continue
     filtered.append(q)
 st.markdown(f"**Found {len(filtered)} questions** matching filters.")
@@ -551,25 +546,25 @@ for idx, q in enumerate(filtered):
         preview_md = q["question_text"].strip()
         st.markdown(preview_md, unsafe_allow_html=True)
         with st.expander("Question details & preview"):
-            tab1, tab2 = st.tabs(["📝 Standard Preview", "🧪 Chemistry Preview"])
-            with tab1:
-                st.markdown(q["body"], unsafe_allow_html=True)
-                if q.get("solution"):
-                    st.markdown("**Solution:**")
-                    st.markdown(q["solution"])
-            with tab2:
-                full_content_md = q["question_text"] + "\n\n"
-                options = q.get("options", {}) or {}
-                non_empty_opts = {k: v for k, v in options.items() if v.strip()}
-                if non_empty_opts:
-                    full_content_md += "#### Options\n"
-                    for o in ["A", "B", "C", "D"]:
-                        opt_val = options.get(o, "")
-                        if opt_val.strip():
-                            full_content_md += f"* **Option {o}**: {opt_val}  \n"
-                if q.get("solution"):
-                    full_content_md += f"\n\n#### Solution\n{q['solution']}"
-                render_chemistry_preview(full_content_md, height=300)
+            # tab1, tab2 = st.tabs(["📝 Standard Preview", "🧪 Chemistry Preview"])
+            # with tab1:
+            st.markdown(q["body"], unsafe_allow_html=True)
+            if q.get("solution"):
+                st.markdown("**Solution:**")
+                st.markdown(q["solution"])
+            # with tab2:
+            #     full_content_md = q["question_text"] + "\n\n"
+            #     options = q.get("options", {}) or {}
+            #     non_empty_opts = {k: v for k, v in options.items() if v.strip()}
+            #     if non_empty_opts:
+            #         full_content_md += "#### Options\n"
+            #         for o in ["A", "B", "C", "D"]:
+            #             opt_val = options.get(o, "")
+            #             if opt_val.strip():
+            #                 full_content_md += f"* **Option {o}**: {opt_val}  \n"
+            #     if q.get("solution"):
+            #         full_content_md += f"\n\n#### Solution\n{q['solution']}"
+            # render_chemistry_preview(full_content_md, height=300)
 
     with row_cols[2]:
         st.write(f"Diff: {q['meta'].get('difficulty')}")
@@ -579,7 +574,7 @@ for idx, q in enumerate(filtered):
         answer_raw = str(answer_val).strip() if answer_val is not None else ""
         possible_letters = [x.strip().upper() for x in answer_raw.split(",") if x.strip()]
         is_mcq_option = len(possible_letters) > 0 and all(x in ["A", "B", "C", "D"] for x in possible_letters)
-        
+
         if is_mcq_option:
             ans_display = ",".join(possible_letters)
             st.write(f"Answer: **{ans_display}**")
@@ -608,7 +603,7 @@ else:
 
         question_fragments = []
         solution_fragments = []
-        for q in chosen:
+        for q_id, q in enumerate(chosen):
             # update the file of `q` if the checkbox is checked
             if update_last_used:
                 q["meta"]["last_used"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
@@ -623,7 +618,7 @@ else:
                     },
                 }
                 logger.info(
-                     f"Updating last_used for {q['filename']} to {q['meta']['last_used']}; {qdict['body']['options']}"
+                    f"Updating last_used for {q['filename']} to {q['meta']['last_used']}; {qdict['body']['options']}"
                 )
                 write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
@@ -648,7 +643,7 @@ else:
                 answer_raw = str(answer_val).strip() if answer_val is not None else ""
                 possible_letters = [x.strip().upper() for x in answer_raw.split(",") if x.strip()]
                 is_mcq_option = len(possible_letters) > 0 and all(x in ["A", "B", "C", "D"] for x in possible_letters)
-                
+
                 if is_mcq_option:
                     if convert_to_subjective:
                         # Convert option letters to their actual values
@@ -665,11 +660,19 @@ else:
                 else:
                     ans_tex = md_to_latex_minimal(answer_raw)
                     display_escaped = escape_latex(ans_tex)
-                
+
                 answer_key_rows.append(f"\\textbf{{{i})}} {display_escaped}")
-            
+
             answers_inline = " \\quad ".join(answer_key_rows)
-            answer_block = r"\bigskip" + "\n" + r"\noindent \textbf{Answer Key:}\par\medskip" + "\n" + r"\noindent " + answers_inline + "\n"
+            answer_block = (
+                r"\bigskip"
+                + "\n"
+                + r"\noindent \textbf{Answer Key:}\par\medskip"
+                + "\n"
+                + r"\noindent "
+                + answers_inline
+                + "\n"
+            )
 
         template_path = TEMPLATE_DIR / TEMPLATE_NAME
         date_str = datetime.datetime.now(datetime.timezone.utc).strftime("%B %d, %Y")
