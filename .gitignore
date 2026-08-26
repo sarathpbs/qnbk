@@ -10,7 +10,7 @@ bin/
 .vagrant/
 questions_output/
 output/
-
+data/images/
 
 prz-metadata.json*
 
@@ -26,6 +26,11 @@ prz-metadata.json*
 
 !README.txt
 !requirements.txt
+!latex-packages.txt
+!tools/askfilo_bookmarklet/*.txt
+
+test_mcexam.*
+
 .Rproj.user
 
 

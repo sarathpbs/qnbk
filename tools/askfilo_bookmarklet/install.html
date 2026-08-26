@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>qnbk Bookmarklet Installer</title>
+<style>
+  :root {
+    --bg: #1e1e2e; --surface: #181825; --overlay: #313244;
+    --text: #cdd6f4; --sub: #6c7086; --blue: #89b4fa;
+    --green: #a6e3a1; --mauve: #cba6f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; padding: 24px;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--overlay);
+    border-radius: 12px; max-width: 620px; width: 100%; padding: 32px;
+  }
+  h1 { font-size: 20px; color: var(--blue); margin-bottom: 6px; }
+  .sub { font-size: 13px; color: var(--sub); margin-bottom: 28px; }
+  .step { display: flex; gap: 14px; margin-bottom: 22px; align-items: flex-start; }
+  .num {
+    background: var(--overlay); color: var(--blue); font-weight: 700;
+    font-size: 13px; border-radius: 50%; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-body h3 { font-size: 14px; margin-bottom: 4px; }
+  .step-body p { font-size: 13px; color: var(--sub); line-height: 1.6; }
+  .drag-area { display: flex; align-items: center; justify-content: center; margin: 10px 0 0; }
+  a.bookmark {
+    display: inline-block; padding: 10px 22px; background: var(--mauve);
+    color: #1e1e2e; border-radius: 8px; font-weight: 700; font-size: 14px;
+    text-decoration: none; cursor: grab;
+    box-shadow: 0 2px 12px rgba(203,166,247,0.3);
+    transition: box-shadow 0.2s, transform 0.2s; user-select: none;
+  }
+  a.bookmark:hover { box-shadow: 0 4px 20px rgba(203,166,247,0.5); transform: translateY(-1px); }
+  .hint { font-size: 11px; color: var(--sub); margin-top: 6px; text-align: center; }
+  .divider { border: none; border-top: 1px solid var(--overlay); margin: 20px 0; }
+  .what { background: var(--overlay); border-radius: 8px; padding: 14px 16px; }
+  .what h3 { font-size: 13px; color: var(--blue); margin-bottom: 8px; }
+  .what ul { padding-left: 18px; font-size: 12.5px; color: var(--sub); line-height: 2; }
+  .what li span { color: var(--text); }
+  .tag {
+    display: inline-block; background: #2a2a3d; color: var(--green);
+    font-family: monospace; font-size: 11px; padding: 1px 6px; border-radius: 4px;
+  }
+  .note { margin-top: 10px; font-size: 12px; color: var(--sub); }
+  code { color: var(--green); font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>&#128203; qnbk Bookmarklet</h1>
+  <p class="sub">Extract question stubs from askfilo.com into your markdown question bank format &mdash; no AI, no server</p>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="step-body">
+      <h3>Show your browser bookmarks bar</h3>
+      <p>Press <strong>Ctrl+Shift+B</strong> (Chrome/Edge) or <strong>Ctrl+B</strong> (Firefox) to show the bookmarks bar if it is hidden.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <div class="step-body">
+      <h3>Drag the button below to your bookmarks bar</h3>
+      <div class="drag-area">
+        <a class="bookmark" href="javascript:%28function%20%28%29%20%7B%20var%20qaData%20%3D%20%7B%7D%3B%20var%20breadcrumbData%20%3D%20%5B%5D%3B%20document.querySelectorAll%28%27script%5Btype%3D%22application/ld%2Bjson%22%5D%27%29.forEach%28function%20%28s%29%20%7B%20try%20%7B%20var%20d%20%3D%20JSON.parse%28s.textContent%29%3B%20if%20%28d%5B%22%40type%22%5D%20%3D%3D%3D%20%22QAPage%22%29%20%7B%20qaData%20%3D%20d%3B%20%7D%20if%20%28d%5B%22%40type%22%5D%20%3D%3D%3D%20%22BreadcrumbList%22%29%20%7B%20breadcrumbData%20%3D%20d.itemListElement%20%7C%7C%20%5B%5D%3B%20%7D%20%7D%20catch%20%28e%29%20%7B%20/%2A%20skip%20malformed%20blocks%20%2A/%20%7D%20%7D%29%3B%20var%20entity%20%3D%20qaData.mainEntity%20%7C%7C%20%7B%7D%3B%20var%20answer%20%3D%20entity.acceptedAnswer%20%7C%7C%20%7B%7D%3B%20var%20questionText%20%3D%20%28entity.name%20%7C%7C%20entity.text%20%7C%7C%20%22TODO%3A%20paste%20question%20here%22%29.trim%28%29%3B%20var%20solutionText%20%3D%20%28answer.text%20%7C%7C%20%22%22%29.trim%28%29%3B%20var%20levelStr%20%3D%20entity.educationalLevel%20%7C%7C%20%22%22%3B%20var%20classMap%20%3D%20%7B%20%22Class%209%22%3A%20%22IX%22%2C%20%22Class%2010%22%3A%20%22X%22%2C%20%22Class%2011%22%3A%20%22XI%22%2C%20%22Class%2012%22%3A%20%22XII%22%20%7D%3B%20var%20classRoman%20%3D%20classMap%5BlevelStr%5D%20%7C%7C%20levelStr.replace%28%22Class%20%22%2C%20%22%22%29.trim%28%29%3B%20var%20breadcrumbNames%20%3D%20breadcrumbData.map%28function%20%28i%29%20%7B%20return%20i.name%20%7C%7C%20%22%22%3B%20%7D%29%3B%20var%20topic%20%3D%20breadcrumbNames.length%20%3E%3D%202%20%3F%20breadcrumbNames%5BbreadcrumbNames.length%20-%202%5D%20%3A%20%28breadcrumbNames%5B0%5D%20%7C%7C%20%22TODO%22%29%3B%20var%20difficulty%20%3D%20%22Unknown%22%3B%20var%20diffEl%20%3D%20document.querySelector%28%27%5Bclass%2A%3D%22question-difficulty%22%5D%27%29%3B%20if%20%28diffEl%29%20%7B%20difficulty%20%3D%20diffEl.textContent.trim%28%29%3B%20%7D%20var%20prevYear%20%3D%20%22None%22%3B%20var%20examEl%20%3D%20document.querySelector%28%27%5Bclass%2A%3D%22question-info-text%22%5D%27%29%3B%20if%20%28examEl%29%20%7B%20prevYear%20%3D%20examEl.textContent.trim%28%29%3B%20%7D%20var%20sourceUrl%20%3D%20window.location.href%3B%20var%20md%20%3D%20%5B%20%22---%22%2C%20%22topic%3A%20%22%20%2B%20topic%2C%20%22class%3A%20%22%20%2B%20classRoman%2C%20%22difficulty%3A%20%22%20%2B%20difficulty%2C%20%22answer%3A%22%2C%20%22prev_year%3A%20%22%20%2B%20prevYear%2C%20%22source%3A%20%22%20%2B%20sourceUrl%2C%20%22last_used%3A%22%2C%20%22---%22%2C%20%22%22%2C%20questionText%2C%20%22%22%2C%20%22OptionA%3A%20%23%20TODO%22%2C%20%22OptionB%3A%20%23%20TODO%22%2C%20%22OptionC%3A%20%23%20TODO%22%2C%20%22OptionD%3A%20%23%20TODO%22%2C%20%22%22%2C%20%22%22%2C%20%22%23%23%20Solution%22%2C%20%22%22%2C%20solutionText%20%7C%7C%20%22%23%20TODO%22%2C%20%5D.join%28%22%5Cn%22%29%3B%20var%20popup%20%3D%20window.open%28%22%22%2C%20%22_blank%22%2C%20%22width%3D720%2Cheight%3D560%2Cmenubar%3Dno%2Ctoolbar%3Dno%2Clocation%3Dno%2Cstatus%3Dno%22%29%3B%20if%20%28%21popup%29%20%7B%20alert%28%22Popup%20blocked%21%20Please%20allow%20popups%20for%20this%20site%20and%20try%20again.%22%29%3B%20return%3B%20%7D%20var%20css%20%3D%20%5B%20%22body%7Bmargin%3A0%3Bpadding%3A16px%3Bbackground%3A%231e1e2e%3Bcolor%3A%23cdd6f4%3Bfont-family%3Asans-serif%3Bbox-sizing%3Aborder-box%7D%22%2C%20%22h3%7Bmargin%3A0%200%204px%3Bcolor%3A%2389b4fa%3Bfont-size%3A15px%7D%22%2C%20%22p.sub%7Bmargin%3A0%200%2010px%3Bcolor%3A%236c7086%3Bfont-size%3A12px%7D%22%2C%20%22textarea%7Bdisplay%3Ablock%3Bwidth%3A100%25%3Bheight%3A410px%3Bbackground%3A%2311111b%3Bcolor%3A%23cdd6f4%3B%22%2C%20%22border%3A1px%20solid%20%2345475a%3Bborder-radius%3A6px%3Bpadding%3A12px%3Bfont-family%3Amonospace%3B%22%2C%20%22font-size%3A12.5px%3Bline-height%3A1.5%3Bresize%3Anone%3Bbox-sizing%3Aborder-box%3Boutline%3Anone%7D%22%2C%20%22textarea%3Afocus%7Bborder-color%3A%2389b4fa%7D%22%2C%20%22.row%7Bdisplay%3Aflex%3Bgap%3A10px%3Bmargin-top%3A10px%3Balign-items%3Acenter%7D%22%2C%20%22button%7Bpadding%3A7px%2018px%3Bbackground%3A%2389b4fa%3Bcolor%3A%231e1e2e%3Bborder%3Anone%3Bborder-radius%3A6px%3Bcursor%3Apointer%3Bfont-weight%3A700%3Bfont-size%3A13px%7D%22%2C%20%22button%3Ahover%7Bbackground%3A%23b4befe%7D%22%2C%20%22%23st%7Bfont-size%3A12px%3Bcolor%3A%23a6e3a1%7D%22%2C%20%5D.join%28%22%22%29%3B%20var%20html%20%3D%20%27%3C%21DOCTYPE%20html%3E%3Chtml%20lang%3D%22en%22%3E%3Chead%3E%3Cmeta%20charset%3D%22utf-8%22%3E%27%20%2B%20%27%3Ctitle%3Eqnbk%20Stub%3C/title%3E%3Cstyle%3E%27%20%2B%20css%20%2B%20%27%3C/style%3E%3C/head%3E%3Cbody%3E%27%20%2B%20%27%3Ch3%3E%26%23128203%3B%20qnbk%20Question%20Stub%3C/h3%3E%27%20%2B%20%27%3Cp%20class%3D%22sub%22%3EEdit%20below%2C%20then%20copy%20to%20clipboard.%20Paste%20into%20your%20questions_output%20file.%3C/p%3E%27%20%2B%20%27%3Ctextarea%20id%3D%22md%22%20spellcheck%3D%22false%22%3E%3C/textarea%3E%27%20%2B%20%27%3Cdiv%20class%3D%22row%22%3E%27%20%2B%20%27%3Cbutton%20onclick%3D%22%27%20%2B%20%22navigator.clipboard.writeText%28document.getElementById%28%27md%27%29.value%29%22%20%2B%20%22.then%28function%28%29%7Bvar%20s%3Ddocument.getElementById%28%27st%27%29%3B%22%20%2B%20%22s.textContent%3D%27%5C%5Cu2713%20Copied%21%27%3B%22%20%2B%20%22setTimeout%28function%28%29%7Bs.textContent%3D%27%27%7D%2C2500%29%7D%29%22%20%2B%20%27%22%3ECopy%20to%20Clipboard%3C/button%3E%27%20%2B%20%27%3Cspan%20id%3D%22st%22%3E%3C/span%3E%27%20%2B%20%27%3C/div%3E%27%20%2B%20%27%3C/body%3E%3C/html%3E%27%3B%20popup.document.write%28html%29%3B%20popup.document.close%28%29%3B%20popup.document.getElementById%28%22md%22%29.value%20%3D%20md%3B%20%7D%29%28%29%3B">&#128203; qnbk Extract</a>
+      </div>
+      <p class="hint">Drag the purple button to your browser bookmarks bar, then release.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div class="step-body">
+      <h3>Use it on any askfilo question page</h3>
+      <p>Navigate to an askfilo question, click the bookmark. A popup appears with the markdown stub &mdash; edit it, then copy and paste into your <code>questions_output/</code> file.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="what">
+    <h3>What gets extracted automatically (no AI)</h3>
+    <ul>
+      <li><span class="tag">topic</span> &nbsp;<span>from breadcrumb trail (e.g. "Combinations")</span></li>
+      <li><span class="tag">class</span> &nbsp;<span>from JSON-LD structured data (e.g. "XI")</span></li>
+      <li><span class="tag">difficulty</span> &nbsp;<span>from page DOM (Easy / Medium / Hard)</span></li>
+      <li><span class="tag">prev_year</span> &nbsp;<span>from page DOM (e.g. "NEET 2020")</span></li>
+      <li><span class="tag">source</span> &nbsp;<span>current page URL</span></li>
+      <li><span class="tag">question text</span> &nbsp;<span>from JSON-LD (text-based questions)</span></li>
+      <li><span class="tag">solution</span> &nbsp;<span>from JSON-LD acceptedAnswer.text</span></li>
+    </ul>
+    <p class="note">&#9888; Options are left as <code># TODO</code> stubs &mdash; fill them in manually from the source page.</p>
+  </div>
+</div>
+</body>
+</html>

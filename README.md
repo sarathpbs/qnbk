@@ -12,6 +12,7 @@ Streamlit utilities for creating, editing, organizing, and compiling question-ba
 - `data/latex/latex_template.tex`: LaTeX template used during export
 - `questions_output/`: default question storage
 - `output/`: generated LaTeX/PDF outputs
+- `tools/askfilo_bookmarklet/`: browser bookmarklet to extract question stubs directly from AskFilo
 
 ## Features
 
@@ -51,6 +52,14 @@ From `3_Question_editor.py`:
 - Edit metadata, question text, options, and solution
 - Save back to the same file or a new path
 - Download the edited content if direct write is unavailable
+
+### 4) Web Question Extractor (AskFilo Bookmarklet)
+
+From `tools/askfilo_bookmarklet/`:
+
+- One-click browser bookmarklet to extract questions, solutions, topic, class, and metadata from askfilo.com.
+- Generates a pre-filled `qnbk` markdown stub in a popup with a **Copy to Clipboard** button.
+- See the [AskFilo Bookmarklet Documentation](tools/askfilo_bookmarklet/README.md) for installation and usage instructions.
 
 ## Installation
 
@@ -131,7 +140,7 @@ Notes:
 
 ## Workflow
 
-1. Create/update question files in `questions_output/` via the create or editor page.
+1. Create/update question files in `questions_output/` via the create or editor page, or extract them via the AskFilo bookmarklet.
 2. Open the compilation page and filter/select questions.
 3. Export to `.tex`, then optionally compile to `.pdf`.
 4. Download artifacts from Streamlit (files also appear in `output/`).
