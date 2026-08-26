@@ -8,7 +8,7 @@ import streamlit as st
 from loguru import logger
 
 from qnbk import DEFAULT_QUESTIONS_DIR
-from qnbk.utils import write_md_file, render_chemistry_preview, chemistry_help_panel
+from qnbk.utils import write_md_file  # , render_chemistry_preview, chemistry_help_panel
 
 QUESTIONS_DIR = DEFAULT_QUESTIONS_DIR
 
@@ -86,81 +86,53 @@ def main() -> None:
 
     output_dir_base = st.text_input("Output directory (relative to project root)", value=str(QUESTIONS_DIR))
 
-    left_col, right_col = st.columns([1, 1], gap="large")
+    st.subheader("Question metadata")
+    topic = st.text_input("Topic (e.g. algebra, geometry)", value="")
+    topic = topic.strip().capitalize() if topic else ""
+    class_num = st.selectbox("Class", ["XII", "XI", "X", "IX", "VIII"], index=0)
 
-    with left_col:
-        st.subheader("Question metadata")
-        topic = st.text_input("Topic (e.g. algebra, geometry)", value="")
-        topic = topic.strip().capitalize() if topic else ""
-        class_num = st.selectbox("Class", ["XII", "XI", "X", "IX", "VIII"], index=0)
+    resolved_output_dir = Path(output_dir_base.strip()) / f"Class-{class_num}" / topic
 
-        resolved_output_dir = Path(output_dir_base.strip()) / f"Class-{class_num}" / topic
+    difficulty_options = ["", "Easy", "Medium", "Hard"]
+    difficulty = st.selectbox("Difficulty", difficulty_options, index=0)
+    prev_year = st.text_input("Years in which this appeared (optional)", help="e.g. 2023", value="")
+    source = st.text_input("Source (optional)", help="e.g. NCERT, JEE 2024", value="")
+    extra_meta_text = st.text_area(
+        "Extra metadata (as JSON) — optional",
+        placeholder='{"learning_objective":"LO1", "chapter": 3}',
+        height=80,
+        value="",
+    )
 
-        difficulty_options = ["", "Easy", "Medium", "Hard"]
-        difficulty = st.selectbox("Difficulty", difficulty_options, index=0)
-        prev_year = st.text_input("Years in which this appeared (optional)", help="e.g. 2023", value="")
-        source = st.text_input("Source (optional)", help="e.g. NCERT, JEE 2024", value="")
-        extra_meta_text = st.text_area(
-            "Extra metadata (as JSON) — optional",
-            placeholder='{"learning_objective":"LO1", "chapter": 3}',
-            height=80,
-            value="",
-        )
+    st.subheader("Question content")
+    question_text = st.text_area("Question text", height=200, value="")
+    st.markdown("**Options (leave some blank for open-response)**")
+    options = []
+    for i in range(4):
+        opt = st.text_input(f"Option {chr(65 + i)}")
+        options.append(opt)
 
-        st.subheader("Question content")
-        question_text = st.text_area("Question text", height=200, value="")
-        st.markdown("**Options (leave some blank for open-response)**")
-        options = []
-        for i in range(4):
-            opt = st.text_input(f"Option {chr(65 + i)}")
-            options.append(opt)
+    options = dict(zip(["A", "B", "C", "D"], options, strict=False))
+    logger.info(f"{options=}")
 
-        options = dict(zip(["A", "B", "C", "D"], options, strict=False))
-        logger.info(f"{options=}")
+    correct_answers = st.text_input(
+        "Correct answer(s)"
+        # help="Enter the option letter(s) (e.g. A, B) or the text/LaTeX answer for open-response (e.g. \\ce{CaCO3}).",
+    )
 
-        correct_answers = st.text_input(
-            "Correct answer(s)",
-            help="Enter the option letter(s) (e.g. A, B) or the text/LaTeX answer for open-response (e.g. \\ce{CaCO3}).",
-        )
+    solution_text = st.text_area("Solution", height=200, value="")
 
-        solution_text = st.text_area("Solution", height=200, value="")
+    generated_file_name = f"q_{generate_id(resolved_output_dir)}.md"
 
-        generated_file_name = f"q_{generate_id(resolved_output_dir)}.md"
+    st.subheader("Output options")
+    filename_override = st.text_input(
+        "Filename override (optional)",
+        help="Generated from the id and the folder provided",
+        value=generated_file_name,
+    )
+    logger.info(f"Filename override: {filename_override}")
 
-        st.subheader("Output options")
-        filename_override = st.text_input(
-            "Filename override (optional)",
-            help="Generated from the id and the folder provided",
-            value=generated_file_name,
-        )
-        logger.info(f"Filename override: {filename_override}")
-
-        submit = st.button("Create question file")
-
-    with right_col:
-        tab_preview, tab_guide = st.tabs(["🧪 Chemistry Preview", "📖 Writing Guide"])
-        
-        with tab_preview:
-            st.markdown("### Real-time Rendered Preview")
-            # Build preview markdown
-            preview_md = f"### Question\n\n{question_text}\n\n"
-            
-            # Check if any options are filled
-            non_empty_opts = {k: v for k, v in options.items() if v.strip()}
-            if non_empty_opts:
-                preview_md += "#### Options\n"
-                for label in ["A", "B", "C", "D"]:
-                    opt_val = options.get(label, "")
-                    if opt_val.strip():
-                        preview_md += f"* **Option {label}**: {opt_val}\n"
-            
-            if solution_text.strip():
-                preview_md += f"\n\n#### Solution\n{solution_text}"
-                
-            render_chemistry_preview(preview_md, height=600)
-            
-        with tab_guide:
-            chemistry_help_panel()
+    submit = st.button("Create question file")
 
     if submit:
         ensure_output_dir(resolved_output_dir)

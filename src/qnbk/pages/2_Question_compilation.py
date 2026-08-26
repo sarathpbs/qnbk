@@ -232,28 +232,44 @@ def question_to_latex(q: dict, include_options: bool = True) -> tuple[str, str]:
         "1" if "C" in correct_letters else "0",
         "1" if "D" in correct_letters else "0",
     ]
-    if not include_options or not all(opt_texts.values()):
-        mc_text = "\\begin{mcanswers}[permutenone]\n \\answernum{1}~ \\answer[correct]{1}{} \n\\end{mcanswers}"
+    if not all(opt_texts.values()):
+        mc_text = (
+            "\\begin{mcanswers}[permutenone]\n \\answernum{1}~ \\answer[correct]{1}{} \n\\end{mcanswers}\n"
+            "\\vspace{-1em}"
+        )
     else:
         opt_args = []
-        mc_text = "\\begin{mcanswers}\n"
+        temp_text = "\\begin{mcanswers}\n"
+        mc_text = temp_text if include_options else "%% " + temp_text
         if use_horizontal:
-            mc_text += "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
+            temp_text = "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
+            temp_text = temp_text if include_options else "%% " + temp_text
+            mc_text += temp_text
         for opt_num, (flag, letter) in enumerate(zip(flags, opt_order, strict=False)):
             body = opt_texts[letter]
             # ensure each argument is TeX safe (already escaped)
             opt_args.append(body)
             if flag == "1":
-                mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer[correct]{{{opt_num + 1}}}{{{body}}}"
+                temp_text = f"\\answernum{{{opt_num + 1}}}~ \\answer[correct]{{{opt_num + 1}}}{{{body}}}"
+                temp_text = temp_text if include_options else "%% " + temp_text
+                mc_text += temp_text
+
             else:
-                mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer{{{opt_num + 1}}}{{{body}}}"
+                temp_text = f"\\answernum{{{opt_num + 1}}}~ \\answer{{{opt_num + 1}}}{{{body}}}"
+                temp_text = temp_text if include_options else "%% " + temp_text
+                mc_text += temp_text
             if use_horizontal and opt_num % 2 == 0:
                 mc_text += " & "
             else:
                 mc_text += " \\\\\n"
         if use_horizontal:
-            mc_text += "\\end{tabular}\n"
-        mc_text += "\\end{mcanswers}\n\\vspace{-1em}"
+            temp_text = "\\end{tabular}\n"
+            temp_text = temp_text if include_options else "%% " + temp_text
+            mc_text += temp_text
+        temp_text = "\\end{mcanswers}\n"
+        temp_text = temp_text if include_options else "%% " + temp_text
+        temp_text += "\\vspace{-1em}" if include_options else "\\vspace{1em}"
+        mc_text += temp_text
     s.append(mc_text)
 
     # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
@@ -567,7 +583,10 @@ for idx, q in enumerate(filtered):
             # render_chemistry_preview(full_content_md, height=300)
 
     with row_cols[2]:
-        st.write(f"Diff: {q['meta'].get('difficulty')}")
+        st.write(
+            f"<p style='font-size:10px;margin-bottom: 3px;'>Diff: {q['meta'].get('difficulty')}</p>",
+            unsafe_allow_html=True,
+        )
         if q["meta"].get("source"):
             st.write(f"Source: {q['meta'].get('source')}")
         answer_val = q["meta"].get("answer")
@@ -577,10 +596,15 @@ for idx, q in enumerate(filtered):
 
         if is_mcq_option:
             ans_display = ",".join(possible_letters)
-            st.write(f"Answer: **{ans_display}**")
+            st.markdown(
+                f"<p style='font-size:10px;margin-bottom: 3px;'>Answer: **{ans_display}**</p>", unsafe_allow_html=True
+            )
         else:
             st.write(f"Answer: {answer_raw}")
-        st.write(f"Path: {q.get('relpath', '-')}")
+        st.write(
+            f"<p style='font-size:10px;margin-bottom: 3px;'>Path: {q.get('relpath', '-')}</p>", unsafe_allow_html=True
+        )
+        st.write("---")
 
 # Build list of chosen question objects
 chosen = [filtered[i] for i in selected_indices]
