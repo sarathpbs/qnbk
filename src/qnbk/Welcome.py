@@ -57,6 +57,7 @@ def main() -> None:
         difficulty: Easy
         answer: B
         prev_year: 2024
+        source: NCERT
         last_used:
         ---
 

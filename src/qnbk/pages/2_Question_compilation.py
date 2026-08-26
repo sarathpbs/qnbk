@@ -3,6 +3,7 @@
 import datetime
 import re
 import subprocess
+from itertools import groupby
 from pathlib import Path
 
 import streamlit as st
@@ -56,6 +57,20 @@ LATEX_SPECIALS = {
 }
 
 
+def find_matching_bracket(s: str, start_idx: int, open_char: str, close_char: str) -> int:
+    """Find the index of the matching closing bracket/brace, handling nesting."""
+    depth = 0
+    for idx in range(start_idx, len(s)):
+        char = s[idx]
+        if char == open_char:
+            depth += 1
+        elif char == close_char:
+            depth -= 1
+            if depth == 0:
+                return idx
+    return -1
+
+
 def escape_latex(s: str) -> str:
     """Escapes LaTeX special characters in the input string, while preserving math delimiters and content.
 
@@ -64,21 +79,97 @@ def escape_latex(s: str) -> str:
     """
     if not isinstance(s, str):
         return s
-    math_pat = re.compile(
-        r"(\\\(.+?\\\))|(\\\[.+?\\\])|(\$\$.+?\$\$)|(\$.+?\$)|(\\begin\{([^}]+)\}.*?\\end\{\6\})|(\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{[^}]*\})*)",
-        re.S,
-    )
+
     replacements = {}
     token_idx = 0
+    i = 0
+    n = len(s)
+    result = []
 
-    def _repl(m):  # noqa: ANN001, ANN202
-        nonlocal token_idx
-        token = f"@@MATH{token_idx}@@"
-        replacements[token] = m.group(0)
-        token_idx += 1
-        return token
+    while i < n:
+        # Check for delimiters
+        if s.startswith(r"\(", i):
+            j = s.find(r"\)", i + 2)
+            if j != -1:
+                token = f"@@MATH{token_idx}@@"
+                replacements[token] = s[i : j + 2]
+                token_idx += 1
+                result.append(token)
+                i = j + 2
+                continue
+        elif s.startswith(r"\[", i):
+            j = s.find(r"\]", i + 2)
+            if j != -1:
+                token = f"@@MATH{token_idx}@@"
+                replacements[token] = s[i : j + 2]
+                token_idx += 1
+                result.append(token)
+                i = j + 2
+                continue
+        elif s.startswith("$$", i):
+            j = s.find("$$", i + 2)
+            if j != -1:
+                token = f"@@MATH{token_idx}@@"
+                replacements[token] = s[i : j + 2]
+                token_idx += 1
+                result.append(token)
+                i = j + 2
+                continue
+        elif s.startswith("$", i):
+            j = s.find("$", i + 1)
+            if j != -1:
+                token = f"@@MATH{token_idx}@@"
+                replacements[token] = s[i : j + 1]
+                token_idx += 1
+                result.append(token)
+                i = j + 1
+                continue
+        elif s.startswith(r"\begin{", i):
+            env_match = re.match(r"^\\begin\{([^}]+)\}", s[i:])
+            if env_match:
+                env_name = env_match.group(1)
+                end_str = f"\\end{{{env_name}}}"
+                j = s.find(end_str, i)
+                if j != -1:
+                    end_idx = j + len(end_str)
+                    token = f"@@MATH{token_idx}@@"
+                    replacements[token] = s[i:end_idx]
+                    token_idx += 1
+                    result.append(token)
+                    i = end_idx
+                    continue
+        elif s[i] == "\\" and i + 1 < n and s[i + 1].isalpha():
+            cmd_match = re.match(r"^\\[a-zA-Z]+", s[i:])
+            if cmd_match:
+                cmd_len = len(cmd_match.group(0))
+                cmd_end = i + cmd_len
+                curr = cmd_end
+                while curr < n:
+                    if s[curr] == "[":
+                        close_idx = find_matching_bracket(s, curr, "[", "]")
+                        if close_idx != -1:
+                            curr = close_idx + 1
+                        else:
+                            break
+                    elif s[curr] == "{":
+                        close_idx = find_matching_bracket(s, curr, "{", "}")
+                        if close_idx != -1:
+                            curr = close_idx + 1
+                        else:
+                            break
+                    else:
+                        break
+                token = f"@@MATH{token_idx}@@"
+                replacements[token] = s[i:curr]
+                token_idx += 1
+                result.append(token)
+                i = curr
+                continue
 
-    protected = math_pat.sub(_repl, s)
+        result.append(s[i])
+        i += 1
+
+    protected = "".join(result)
     for k, v in LATEX_SPECIALS.items():
         protected = protected.replace(k, v)
     for token, math in replacements.items():
@@ -99,7 +190,7 @@ def md_to_latex_minimal(md_text: str) -> str:
     return t  # noqa: RET504
 
 
-def question_to_latex(q: dict) -> tuple[str, str]:
+def question_to_latex(q: dict, include_options: bool = True) -> tuple[str, str]:
     """Render one question to LaTeX.
 
     Chooses horizontal options layout when short and simple, else vertical enumerate.
@@ -132,7 +223,9 @@ def question_to_latex(q: dict) -> tuple[str, str]:
     # question as an item in top-level enumerate (caller/template handles outer enumerate)
     s.append("\\question " + question_text + "\n\\vspace{-1em}\n")
 
-    correct_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
+    answer_val = q["meta"].get("answer")
+    answer_str = str(answer_val).strip() if answer_val is not None else ""
+    correct_letters = answer_str.upper().split(",")
     flags = [
         "1" if "A" in correct_letters else "0",
         "1" if "B" in correct_letters else "0",
@@ -140,27 +233,43 @@ def question_to_latex(q: dict) -> tuple[str, str]:
         "1" if "D" in correct_letters else "0",
     ]
     if not all(opt_texts.values()):
-        mc_text = "\\begin{mcanswers}[permutenone]\n \\answer[correct]{1}{} \n\\end{mcanswers}\n\\vspace{-2em}\n"
+        mc_text = (
+            "\\begin{mcanswers}[permutenone]\n \\answernum{1}~ \\answer[correct]{1}{} \n\\end{mcanswers}\n"
+            "\\vspace{-1em}"
+        )
     else:
         opt_args = []
-        mc_text = "\\begin{mcanswers}\n"
+        temp_text = "\\begin{mcanswers}\n"
+        mc_text = temp_text if include_options else "%% " + temp_text
         if use_horizontal:
-            mc_text += "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
+            temp_text = "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
+            temp_text = temp_text if include_options else "%% " + temp_text
+            mc_text += temp_text
         for opt_num, (flag, letter) in enumerate(zip(flags, opt_order, strict=False)):
             body = opt_texts[letter]
             # ensure each argument is TeX safe (already escaped)
             opt_args.append(body)
             if flag == "1":
-                mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer[correct]{{{opt_num + 1}}}{{{body}}}"
+                temp_text = f"\\answernum{{{opt_num + 1}}}~ \\answer[correct]{{{opt_num + 1}}}{{{body}}}"
+                temp_text = temp_text if include_options else "%% " + temp_text
+                mc_text += temp_text
+
             else:
-                mc_text += f"\\answernum{{{opt_num + 1}}}~ \\answer{{{opt_num + 1}}}{{{body}}}"
+                temp_text = f"\\answernum{{{opt_num + 1}}}~ \\answer{{{opt_num + 1}}}{{{body}}}"
+                temp_text = temp_text if include_options else "%% " + temp_text
+                mc_text += temp_text
             if use_horizontal and opt_num % 2 == 0:
                 mc_text += " & "
             else:
                 mc_text += " \\\\\n"
         if use_horizontal:
-            mc_text += "\\end{tabular}\n"
-        mc_text += "\\end{mcanswers}\n\\vspace{-2em}\n"
+            temp_text = "\\end{tabular}\n"
+            temp_text = temp_text if include_options else "%% " + temp_text
+            mc_text += temp_text
+        temp_text = "\\end{mcanswers}\n"
+        temp_text = temp_text if include_options else "%% " + temp_text
+        temp_text += "\\vspace{-1em}" if include_options else "\\vspace{1em}"
+        mc_text += temp_text
     s.append(mc_text)
 
     # macro_call = "\\OptionGrid" if use_horizontal else "\\OptionList"
@@ -181,6 +290,47 @@ def question_to_latex(q: dict) -> tuple[str, str]:
     return "\n".join(s), "\n".join(solution)
 
 
+def generate_difficulty_note(questions: list[dict]) -> str:
+    """Generate a LaTeX sentence describing the contiguous difficulty ranges of the questions."""
+    if not questions:
+        return ""
+
+    items = []
+    for idx, q in enumerate(questions, 1):
+        diff = q["meta"].get("difficulty") or "Unknown"
+        items.append((idx, diff))
+
+    ranges = []
+    for idx_range, (diff, grp) in enumerate(groupby(items, key=lambda x: x[1])):
+        grp_list = list(grp)
+        start_idx = grp_list[0][0]
+        end_idx = grp_list[-1][0]
+
+        diff_lower = diff.lower()
+        diff_display = "difficult" if diff_lower == "hard" else diff_lower
+
+        if idx_range == 0:
+            # First range has the prefix "question" or "questions"
+            if start_idx == end_idx:
+                ranges.append(f"question {start_idx} is {diff_display}")
+            else:
+                ranges.append(f"questions {start_idx}-{end_idx} are {diff_display}")
+        else:
+            # Subsequent ranges do not repeat "questions" prefix
+            if start_idx == end_idx:
+                ranges.append(f"{start_idx} is {diff_display}")
+            else:
+                ranges.append(f"{start_idx}-{end_idx} are {diff_display}")
+
+    if not ranges:
+        return ""
+
+    sentence = ", ".join(ranges) + "."
+    sentence = sentence[0].upper() + sentence[1:]
+
+    return f"\\noindent \\textit{{Note: {sentence}}}\\par\\medskip\n"
+
+
 def render_latex_template_simple(
     template_path: Path,
     title: str,
@@ -189,6 +339,7 @@ def render_latex_template_simple(
     solutions_tex: str,
     show_solutions: bool,
     answer_block: str | None = None,
+    difficulty_top: str = "",
 ) -> str:
     """Render into the latex template
 
@@ -198,6 +349,7 @@ def render_latex_template_simple(
     :param questions_tex:
     :param show_solutions:
     :param answer_block:
+    :param difficulty_top:
     :return:
     """
     tpl = template_path.read_text(encoding="utf-8")
@@ -210,6 +362,7 @@ def render_latex_template_simple(
     out = out.replace("<<<QUESTIONS_BLOCK>>>", questions_tex)
     out = out.replace("<<<SOLUTIONS_BLOCK>>>", solutions_tex)
     out = out.replace("<<<ANSWER_KEY_BLOCK>>>", answer_block)
+    out = out.replace("<<<DIFFICULTY_TOP_BLOCK>>>", difficulty_top)
 
     return out  # noqa: RET504
 
@@ -257,7 +410,56 @@ with st.sidebar:
     selected_topics = st.multiselect("Topic(s)", all_topics, default=all_topics)
     selected_difficulties = st.multiselect("Difficulty level(s)", all_difficulties, default=all_difficulties)
 
-    include_solutions = st.checkbox("Include solutions in compiled PDF (Answer key at the end)", value=False)
+    question_type_filter = st.radio(
+        "Question Type:",
+        options=["All", "Objective (with options)", "Subjective (no options)"],
+        index=0,
+        help="Filter by objective (has options) or subjective (no options) questions.",
+    )
+
+    usage_filter_action = st.radio(
+        "Usage Date Filter:",
+        options=["All questions", "Hide recently used", "Show only recently used"],
+        index=0,
+        help="Filter questions based on their 'last_used' date.",
+    )
+
+    cutoff_date = None
+    if usage_filter_action != "All questions":
+        date_preset = st.selectbox(
+            "Select Time Window:", options=["1 Month", "3 Months", "1 Year", "Custom Date..."], index=0
+        )
+        current_utc_date = datetime.datetime.now(datetime.timezone.utc).date()
+        if date_preset == "1 Month":
+            cutoff_date = current_utc_date - datetime.timedelta(days=30)
+        elif date_preset == "3 Months":
+            cutoff_date = current_utc_date - datetime.timedelta(days=90)
+        elif date_preset == "1 Year":
+            cutoff_date = current_utc_date - datetime.timedelta(days=365)
+        elif date_preset == "Custom Date...":
+            cutoff_date = st.date_input("Select Cutoff Date:", value=current_utc_date)
+
+    solutions_inline = st.checkbox(
+        "Show solutions immediately after each question (options will be hidden)",
+        value=False,
+        help="Only questions with solutions compile. Options are hidden and solutions placed below questions.",
+    )
+    convert_to_subjective = st.checkbox(
+        "Convert objective questions to subjective (hide options)",
+        value=False,
+        help="If checked, objective questions (MCQs) are converted to subjective ones by hiding their options. "
+        "The answer key will show the option value instead of the letter.",
+    )
+    include_solutions = st.checkbox(
+        "Include detailed solutions in compiled PDF",
+        value=False,
+        disabled=solutions_inline,
+    )
+    include_answer_key = st.checkbox(
+        "Include answer key at the end",
+        value=False,
+        disabled=solutions_inline,
+    )
 
     compile_pdf = st.checkbox("Compile to PDF", value=True)
 
@@ -265,6 +467,18 @@ with st.sidebar:
         "Update last used",
         value=False,
         help="If checked, updates the 'last_used' field in each of the question metadata to current date (YYYY-MM-DD)",
+    )
+
+    sort_by_difficulty = st.checkbox(
+        "Sort questions by difficulty (Easy -> Medium -> Hard)",
+        value=False,
+        help="If checked, sorts the chosen questions so Easy ones appear first, then Medium, and Hard last.",
+    )
+
+    show_difficulty_note = st.checkbox(
+        "Show difficulty range note (at top)",
+        value=False,
+        help="If checked, adds a note at the top of the worksheet showing the difficulty ranges of the questions.",
     )
 
     st.write("---")
@@ -277,13 +491,55 @@ with st.sidebar:
     )
 
 # Filter questions
-filtered = [
-    q
-    for q in class_filtered_questions
-    if q["meta"].get("topic") in selected_topics and q["meta"].get("difficulty") in selected_difficulties
-]
+filtered = []
+
+for q in class_filtered_questions:
+    if q["meta"].get("topic") not in selected_topics:
+        continue
+    if q["meta"].get("difficulty") not in selected_difficulties:
+        continue
+
+    # Filter by question type (objective vs subjective)
+    has_options = any(q.get("options", {}).values())
+    if question_type_filter == "Objective (with options)" and not has_options:
+        continue
+    if question_type_filter == "Subjective (no options)" and has_options:
+        continue
+    if usage_filter_action != "All questions" and cutoff_date is not None:
+        last_used_val = q["meta"].get("last_used")
+        last_used_date = None
+        if last_used_val:
+            if isinstance(last_used_val, datetime.date):
+                last_used_date = last_used_val
+            elif isinstance(last_used_val, datetime.datetime):
+                last_used_date = last_used_val.date()
+            elif isinstance(last_used_val, str):
+                try:
+                    last_used_date = datetime.datetime.strptime(last_used_val.strip(), "%Y-%m-%d").date()  # noqa:DTZ007
+                except ValueError as e:
+                    logger.error(e)
+        is_recent = last_used_date is not None and last_used_date >= cutoff_date
+        if (usage_filter_action == "Hide recently used" and is_recent) or (
+            usage_filter_action == "Show only recently used" and not is_recent
+        ):
+            continue
+    filtered.append(q)
 st.markdown(f"**Found {len(filtered)} questions** matching filters.")
 title = st.text_input("Title for the worksheet (appears in PDF header)", value="Questions")
+
+# Bulk selection controls
+if len(filtered) > 0:
+    col_sel1, col_sel2, _ = st.columns([2.5, 2.5, 7], gap="small")
+    with col_sel1:
+        if st.button("Select all filtered", use_container_width=True):
+            for q in filtered:
+                st.session_state[f"sel_{q['relpath']}"] = True
+            st.rerun()
+    with col_sel2:
+        if st.button("Deselect all filtered", use_container_width=True):
+            for q in filtered:
+                st.session_state[f"sel_{q['relpath']}"] = False
+            st.rerun()
 
 # Present questions with selection checkboxes (show only question text in list)
 selected_indices = []
@@ -296,7 +552,7 @@ with cols[2]:
     st.write("Meta")
 
 for idx, q in enumerate(filtered):
-    checkbox_key = f"sel_{idx}"
+    checkbox_key = f"sel_{q['relpath']}"
     row_cols = st.columns([1, 8, 3], gap="small", vertical_alignment="center")
     with row_cols[0]:
         sel = st.checkbox(f"Select {q['filename']}", key=checkbox_key, label_visibility="collapsed")
@@ -305,24 +561,60 @@ for idx, q in enumerate(filtered):
     with row_cols[1]:
         preview_md = q["question_text"].strip()
         st.markdown(preview_md, unsafe_allow_html=True)
-        with st.expander("Question file"):
+        with st.expander("Question details & preview"):
+            # tab1, tab2 = st.tabs(["📝 Standard Preview", "🧪 Chemistry Preview"])
+            # with tab1:
             st.markdown(q["body"], unsafe_allow_html=True)
-            with st.expander("**Solution**\n"):
-                st.markdown(q.get("solution", ""))
+            if q.get("solution"):
+                st.markdown("**Solution:**")
+                st.markdown(q["solution"])
+            # with tab2:
+            #     full_content_md = q["question_text"] + "\n\n"
+            #     options = q.get("options", {}) or {}
+            #     non_empty_opts = {k: v for k, v in options.items() if v.strip()}
+            #     if non_empty_opts:
+            #         full_content_md += "#### Options\n"
+            #         for o in ["A", "B", "C", "D"]:
+            #             opt_val = options.get(o, "")
+            #             if opt_val.strip():
+            #                 full_content_md += f"* **Option {o}**: {opt_val}  \n"
+            #     if q.get("solution"):
+            #         full_content_md += f"\n\n#### Solution\n{q['solution']}"
+            # render_chemistry_preview(full_content_md, height=300)
 
     with row_cols[2]:
-        st.write(f"Diff: {q['meta'].get('difficulty')}")
-        ans_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
-        ans_text = [q.get("options", {}).get(ans_letter, "").strip() for ans_letter in ans_letters]
-        ans_text = ",".join(ans_text)
-        if len(ans_text) < 12:
-            st.write(f"Answer: **{ans_letters}** — {ans_text}")
+        st.write(
+            f"<p style='font-size:10px;margin-bottom: 3px;'>Diff: {q['meta'].get('difficulty')}</p>",
+            unsafe_allow_html=True,
+        )
+        if q["meta"].get("source"):
+            st.write(f"Source: {q['meta'].get('source')}")
+        answer_val = q["meta"].get("answer")
+        answer_raw = str(answer_val).strip() if answer_val is not None else ""
+        possible_letters = [x.strip().upper() for x in answer_raw.split(",") if x.strip()]
+        is_mcq_option = len(possible_letters) > 0 and all(x in ["A", "B", "C", "D"] for x in possible_letters)
+
+        if is_mcq_option:
+            ans_display = ",".join(possible_letters)
+            st.markdown(
+                f"<p style='font-size:10px;margin-bottom: 3px;'>Answer: **{ans_display}**</p>", unsafe_allow_html=True
+            )
         else:
-            st.write(f"Answer: **{ans_letters}**")
-        st.write(f"Path: {q.get('relpath', '-')}")
+            st.write(f"Answer: {answer_raw}")
+        st.write(
+            f"<p style='font-size:10px;margin-bottom: 3px;'>Path: {q.get('relpath', '-')}</p>", unsafe_allow_html=True
+        )
+        st.write("---")
 
 # Build list of chosen question objects
 chosen = [filtered[i] for i in selected_indices]
+
+if sort_by_difficulty:
+    difficulty_order = {"Easy": 0, "Medium": 1, "Hard": 2}
+    chosen.sort(key=lambda q: difficulty_order.get(q["meta"].get("difficulty"), 3))
+
+if solutions_inline:
+    chosen = [q for q in chosen if q.get("solution") and q["solution"].strip()]
 
 st.write("---")
 st.markdown(f"**{len(chosen)} selected for export**")
@@ -335,7 +627,7 @@ else:
 
         question_fragments = []
         solution_fragments = []
-        for q in chosen:
+        for q_id, q in enumerate(chosen):
             # update the file of `q` if the checkbox is checked
             if update_last_used:
                 q["meta"]["last_used"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
@@ -354,25 +646,61 @@ else:
                 )
                 write_md_file(qdict, q["path"])
             q["options"] = q.get("options", {})
-            question, solution = question_to_latex(q)
-            question_fragments.append(question)
-            solution_fragments.append(solution)
+            include_opts = (not solutions_inline) and (not convert_to_subjective)
+            question, solution = question_to_latex(q, include_options=include_opts)
+            # Add a source comment so users can track errors back to the MD file
+            source_comment = f"% SOURCE: {q.get('relpath', 'Unknown')}\n"
+            if solutions_inline:
+                sol_formatted = f"\n\n\\par\\medskip\\noindent\\textbf{{Solution:}} {solution}\n"
+                question_fragments.append(source_comment + question + sol_formatted)
+            else:
+                question_fragments.append(source_comment + question)
+                if solution:
+                    solution_fragments.append(f"\\noindent \\textbf{{{q_id + 1})}} \\quad {solution}\\par\\bigskip\n")
 
         # wrap in top-level enumerate in the template; template expects items inside an enumerate
         answer_block = ""
-        if include_solutions:
+        if include_answer_key:
             answer_key_rows = []
             for i, q in enumerate(chosen, start=1):
-                answer_letters = (q["meta"].get("answer") or "").strip().upper().split(",")
-                ans_text = [q.get("options", {}).get(ans_letter, "").strip() for ans_letter in answer_letters]
-                ans_text = ",".join(ans_text)
-                display = f"{answer_letters} — {ans_text}" if ans_text else f"{answer_letters}"
-                display_escaped = escape_latex(display)
-                answer_key_rows.append({"number": i, "answer": display_escaped})
-            answer_block = r"\pagebreak" + "\n".join([f"{row['number']}:{row['answer']}\n" for row in answer_key_rows])
+                answer_val = q["meta"].get("answer")
+                answer_raw = str(answer_val).strip() if answer_val is not None else ""
+                possible_letters = [x.strip().upper() for x in answer_raw.split(",") if x.strip()]
+                is_mcq_option = len(possible_letters) > 0 and all(x in ["A", "B", "C", "D"] for x in possible_letters)
+
+                if is_mcq_option:
+                    if convert_to_subjective:
+                        # Convert option letters to their actual values
+                        values = []
+                        for letter in possible_letters:
+                            val_raw = q.get("options", {}).get(letter, "")
+                            val_md = md_to_latex_minimal(val_raw)
+                            val_tex = escape_latex(val_md)
+                            values.append(val_tex)
+                        display_escaped = ", ".join(values)
+                    else:
+                        display = ",".join(possible_letters)
+                        display_escaped = escape_latex(display)
+                else:
+                    ans_tex = md_to_latex_minimal(answer_raw)
+                    display_escaped = escape_latex(ans_tex)
+
+                answer_key_rows.append(f"\\textbf{{{i})}} {display_escaped}")
+
+            answers_inline = " \\quad ".join(answer_key_rows)
+            answer_block = (
+                r"\bigskip"
+                + "\n"
+                + r"\noindent \textbf{Answer Key:}\par\medskip"
+                + "\n"
+                + r"\noindent "
+                + answers_inline
+                + "\n"
+            )
 
         template_path = TEMPLATE_DIR / TEMPLATE_NAME
         date_str = datetime.datetime.now(datetime.timezone.utc).strftime("%B %d, %Y")
+        difficulty_top = generate_difficulty_note(chosen) if show_difficulty_note else ""
         tex_text = render_latex_template_simple(
             template_path,
             title=title,
@@ -381,6 +709,7 @@ else:
             solutions_tex="\n\n".join(solution_fragments),
             show_solutions=include_solutions,
             answer_block=answer_block,
+            difficulty_top=difficulty_top,
         )
 
         tex_path = tex_name

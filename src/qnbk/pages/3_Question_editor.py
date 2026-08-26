@@ -180,6 +180,7 @@ with col2:
 # If we have content, parse it and show editable fields
 if raw:
     meta, rest = parse_front_matter(raw)
+    meta.setdefault("source", "")
     question_text, options_dict, solution_text = parse_body(rest)
 
     st.subheader("Metadata")
@@ -237,8 +238,26 @@ if raw:
 
     new_content = compose_file(final_meta, final_question, final_options, final_solution)
 
-    st.subheader("Preview")
-    st.code(new_content[:10000], language="text")
+    # build preview markdown
+    preview_md = f"### Question\n\n{final_question}\n\n"
+    non_empty_opts = {k: v for k, v in final_options.items() if v.strip()}
+    if non_empty_opts:
+        preview_md += "#### Options\n"
+        for label in ["A", "B", "C", "D"]:
+            opt_val = final_options.get(label, "")
+            if opt_val.strip():
+                preview_md += f"* **Option {label}**: {opt_val}\n"
+    if final_solution.strip():
+        preview_md += f"\n\n#### Solution\n{final_solution}"
+
+    # st.subheader("Preview & Resources")
+    # tab_chem, tab_raw, tab_guide = st.tabs(["🧪 Chemistry Preview", "📝 Raw Markdown", "📖 Writing Guide"])
+    # with tab_chem:
+    #     render_chemistry_preview(preview_md, height=500)
+    # with tab_raw:
+    #     st.code(new_content[:10000], language="text")
+    # with tab_guide:
+    #     chemistry_help_panel()
 
     # save logic
     if save_button:
