@@ -44,7 +44,6 @@ from pathlib import Path
 import streamlit as st
 
 from qnbk import DEFAULT_QUESTIONS_DIR
-from qnbk.utils import render_chemistry_preview, chemistry_help_panel
 
 st.set_page_config(page_title="Question File Editor", layout="wide")
 
@@ -251,14 +250,14 @@ if raw:
     if final_solution.strip():
         preview_md += f"\n\n#### Solution\n{final_solution}"
 
-    st.subheader("Preview & Resources")
-    tab_chem, tab_raw, tab_guide = st.tabs(["🧪 Chemistry Preview", "📝 Raw Markdown", "📖 Writing Guide"])
-    with tab_chem:
-        render_chemistry_preview(preview_md, height=500)
-    with tab_raw:
-        st.code(new_content[:10000], language="text")
-    with tab_guide:
-        chemistry_help_panel()
+    # st.subheader("Preview & Resources")
+    # tab_chem, tab_raw, tab_guide = st.tabs(["🧪 Chemistry Preview", "📝 Raw Markdown", "📖 Writing Guide"])
+    # with tab_chem:
+    #     render_chemistry_preview(preview_md, height=500)
+    # with tab_raw:
+    #     st.code(new_content[:10000], language="text")
+    # with tab_guide:
+    #     chemistry_help_panel()
 
     # save logic
     if save_button:
