@@ -139,7 +139,7 @@ def main():
         print("Error: No active file provided.")
         sys.exit(1)
 
-    active_file = sys.argv[1].replace('\\', '/')
+    active_file = sys.argv[1].strip("'\"").replace('\\', '/')
 
     repo_root = Path(__file__).resolve().parents[1]
     if active_file.endswith('.md'):
