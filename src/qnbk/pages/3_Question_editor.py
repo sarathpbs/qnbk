@@ -3,52 +3,29 @@ r"""Streamlit Question File Editor
 Loads question files in the following format (YAML front-matter + body),
 lets you edit metadata, question, options and solution, and save back to the same file
 or to a new filename.
-
-Example input file:
----
-topic: Differentiation
-difficulty: Easy
-answer:
-prev_year:
-chapter: 1
----
-
-
-What is the derivative of \(x^2\)?
-
-
-OptionA: \(x\)
-OptionB: \(2x\)
-OptionC: \(x^3/3\)
-OptionD: 2
-
-
-## Solution
-
-Differentiate: \(f'(x)=2x\).
-
-Usage: `streamlit run streamlit_question_editor.py`
-
-Notes:
-- If you upload a file using the uploader, you can save it back to disk (if running locally) or
-download the updated file.
-- If you provide a file path that exists on the server where Streamlit runs, the app can overwrite that file when
-you press "Save to same file".
-
 """
 
-import re
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 
+from loguru import logger
 import streamlit as st
 
 from qnbk import DEFAULT_QUESTIONS_DIR
+from qnbk.question_index import upsert_question
+from qnbk.styles import inject_custom_css
+from qnbk.utils import render_question_preview, syntax_help_panel
 
-st.set_page_config(page_title="Question File Editor", layout="wide")
+st.set_page_config(
+    page_title="Question File Editor",
+    page_icon="✏️",
+    layout="wide",
+)
+
+inject_custom_css()
 
 # ----------------- Parsing Utilities -----------------
-
 FRONT_MATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 OPTION_RE = re.compile(r"^Option([A-Z]):\s*(.*)$", re.MULTILINE)
 SOLUTION_HEADER_RE = re.compile(r"^##\s*Solution\s*$", re.IGNORECASE | re.MULTILINE)
@@ -69,19 +46,12 @@ def parse_front_matter(text: str) -> tuple[dict, str]:
                 key, val = line.split(":", 1)
                 meta[key.strip()] = val.strip()
             else:
-                # treat whole line as key with empty value
                 meta[line.strip()] = ""
     return meta, rest.lstrip("\n")
 
 
 def parse_body(text: str) -> tuple[str, dict, str]:
-    """Return (question_text, options_dict, solution_text)
-
-    - Options matched by lines starting with OptionX: <text>
-    - Solution is everything after a '## Solution' header (case-insensitive)
-    - Question text is what's before the first Option or the solution header
-    """
-    # split solution
+    """Return (question_text, options_dict, solution_text)."""
     sol_m = SOLUTION_HEADER_RE.search(text)
     solution = ""
     body_before_solution = text
@@ -89,14 +59,12 @@ def parse_body(text: str) -> tuple[str, dict, str]:
         solution = text[sol_m.end() :].strip()
         body_before_solution = text[: sol_m.start()].rstrip()
 
-    # find options
     options = {}
     for m in OPTION_RE.finditer(body_before_solution):
         idx = m.group(1)
         val = m.group(2).strip()
         options[idx] = val
 
-    # question text = body_before_solution, but remove option lines
     question_lines = []
     for line in body_before_solution.splitlines():
         if OPTION_RE.match(line):
@@ -107,21 +75,12 @@ def parse_body(text: str) -> tuple[str, dict, str]:
 
 
 def compose_file(meta: dict, question: str, options: dict, solution: str) -> str:
-    """Compose the file
-
-    :param meta:
-    :param question:
-    :param options:
-    :param solution:
-    :return:
-    """
+    """Compose the file contents from parts."""
     lines = ["---"]
-    # keep the keys in the order of meta insertion where possible
     for k, v in meta.items():
         lines.append(f"{k}: {v}")
     lines.append("---\n")
 
-    # body
     if question:
         lines.append(question.strip() + "\n")
     for key in sorted(options.keys()):
@@ -132,24 +91,22 @@ def compose_file(meta: dict, question: str, options: dict, solution: str) -> str
 
 
 # ----------------- UI -----------------
+st.title("Question File Editor ✏️")
+st.caption("Load an existing question Markdown file, update metadata or formulas, and save back with immediate index synchronization.")
 
-st.title("Question file editor")
-st.markdown(
-    "Load a question file (YAML front-matter + body), edit metadata, question, options and solution, then save back."
-)
-
-col1, col2 = st.columns([2, 1])
+col1, col2 = st.columns([7, 3], gap="medium")
 
 with col1:
-    st.header("Load")
+    st.subheader("📂 Load Question")
     questions_root = Path(
-        st.text_input("Question bank root directory", value=str(DEFAULT_QUESTIONS_DIR), placeholder="questions_output")
+        st.text_input("Question bank root directory", value=str(DEFAULT_QUESTIONS_DIR))
     )
     file_path = st.text_input(
-        "Question file path (absolute or relative to root)",
-        value="",
-        placeholder="Differentiation/q_00001.md",
+        "Question file path (relative to root or absolute)",
+        placeholder="Class-XI/Differentiation/q_00001.md",
     )
+    raw = ""
+    display_name = ""
     if file_path:
         resolved_path = Path(file_path)
         if not resolved_path.is_absolute():
@@ -159,86 +116,78 @@ with col1:
             with open(resolved_path, encoding="utf-8") as f:
                 raw = f.read()
         except Exception as e:
-            raw = ""
             st.error(f"Could not read {resolved_path}: {e}")
-    else:
-        raw = ""
-        display_name = ""
 
     if not raw:
-        st.info("Upload a file or provide a readable path to begin.")
+        st.info("💡 Enter a file path above to begin editing.")
 
 with col2:
-    st.header("Actions")
+    st.subheader("⚙️ Save Options")
+    default_save_val = display_name.replace(str(questions_root) + "/", "") if display_name else ""
     save_name = st.text_input(
-        "Save as path (absolute or relative to root; blank uses loaded file)",
-        value=display_name.replace(str(questions_root) + "/", ""),
+        "Target save path (blank = overwrite loaded file)",
+        value=default_save_val,
     )
-    overwrite = st.checkbox("Overwrite the provided file path (if valid)", value=False)
-    save_button = st.button("Save / Update file")
+    overwrite = st.checkbox("Allow overwriting existing target", value=True)
+    save_button = st.button("💾 Save Changes", type="primary", use_container_width=True, disabled=not bool(raw))
 
-# If we have content, parse it and show editable fields
 if raw:
     meta, rest = parse_front_matter(raw)
     meta.setdefault("source", "")
     question_text, options_dict, solution_text = parse_body(rest)
 
-    st.subheader("Metadata")
-    # show all existing keys; let user add new key
+    st.write("---")
+    st.subheader("1. Metadata Attributes")
+
     meta_keys = list(meta.keys())
     edited_meta = {}
+
+    m_cols = st.columns(3)
+    col_idx = 0
     for k in meta_keys:
-        if k not in ["difficulty"]:
-            edited_meta[k] = st.text_input(f"{k}", value=meta.get(k, ""), key=f"meta_{k}")
+        if k == "difficulty":
+            with m_cols[col_idx % 3]:
+                difficulty_options = ["Easy", "Medium", "Hard"]
+                loaded_diff = meta.get("difficulty", "Medium")
+                curr_diff = loaded_diff if loaded_diff in difficulty_options else "Medium"
+                edited_meta[k] = st.pills("Difficulty", difficulty_options, default=curr_diff)
         else:
-            difficulty_options = ["", "Easy", "Medium", "Hard"]
-            loaded_difficulty = meta.get("difficulty", "")
-            edited_meta[k] = st.selectbox(
-                "Difficulty",
-                difficulty_options,
-                index=difficulty_options.index(loaded_difficulty) if loaded_difficulty in difficulty_options else 0,
-            )
-    # allow adding a new metadata key
-    new_key = st.text_input("Add new metadata key name (leave blank to skip)", value="", key="new_meta_key")
-    if new_key.strip():
-        new_val = st.text_input(f"Value for {new_key}", value="", key=f"meta_new_{new_key}")
-        if new_key not in edited_meta:
-            edited_meta[new_key] = new_val
+            with m_cols[col_idx % 3]:
+                edited_meta[k] = st.text_input(f"{k.capitalize()}", value=meta.get(k, ""), key=f"meta_{k}")
+        col_idx += 1
 
-    st.subheader("Question & Options")
-    q_edit = st.text_area("Question text (Markdown / LaTeX allowed)", value=question_text, height=160)
+    st.write("---")
+    edit_left, edit_right = st.columns([1, 1], gap="large")
 
-    # ensure options A-D are present in UI even if missing
-    option_keys = sorted(options_dict.keys())
-    # default to A,B,C,D if no options found
-    if not option_keys:
-        option_keys = ["A", "B", "C", "D"]
+    with edit_left:
+        st.subheader("2. Question Body & Options")
+        q_edit = st.text_area("Question statement", value=question_text, height=180)
 
-    opt_cols = st.columns(len(option_keys))
-    updated_options = {}
-    for i, k in enumerate(option_keys):
-        with opt_cols[i]:
-            updated_options[k] = st.text_input(f"Option {k}", value=options_dict.get(k, ""), key=f"opt_{k}")
+        option_keys = sorted(options_dict.keys())
+        if not option_keys:
+            option_keys = ["A", "B", "C", "D"]
 
-    if not all(updated_options.values()):
-        st.info("Some options are blank; this will be treated as an open-response question.")
+        st.markdown("**Options:**")
+        opt_cols = st.columns(2)
         updated_options = {}
+        for i, k in enumerate(option_keys):
+            with opt_cols[i % 2]:
+                updated_options[k] = st.text_input(f"Option {k}", value=options_dict.get(k, ""), key=f"opt_{k}")
 
-    st.subheader("Solution")
-    sol_edit = st.text_area("Solution (markdown / LaTeX allowed)", value=solution_text, height=160)
+        if not any(updated_options.values()):
+            updated_options = {}
 
-    st.markdown("---")
+        st.subheader("3. Solution Explanation")
+        sol_edit = st.text_area("Detailed solution", value=solution_text, height=160)
 
     # compose content
-    # merge metadata; keep user-edited values
     final_meta = edited_meta
     final_question = q_edit
     final_options = updated_options
     final_solution = sol_edit
-
     new_content = compose_file(final_meta, final_question, final_options, final_solution)
 
-    # build preview markdown
+    # preview markdown
     preview_md = f"### Question\n\n{final_question}\n\n"
     non_empty_opts = {k: v for k, v in final_options.items() if v.strip()}
     if non_empty_opts:
@@ -250,67 +199,69 @@ if raw:
     if final_solution.strip():
         preview_md += f"\n\n#### Solution\n{final_solution}"
 
-    # st.subheader("Preview & Resources")
-    # tab_chem, tab_raw, tab_guide = st.tabs(["🧪 Chemistry Preview", "📝 Raw Markdown", "📖 Writing Guide"])
-    # with tab_chem:
-    #     render_chemistry_preview(preview_md, height=500)
-    # with tab_raw:
-    #     st.code(new_content[:10000], language="text")
-    # with tab_guide:
-    #     chemistry_help_panel()
+    with edit_right:
+        st.subheader("Live Rendered Preview")
+        tab_preview, tab_raw, tab_guide = st.tabs(["👁️ Rendered Preview", "📝 Raw Markdown", "📖 Writing Guide"])
+        with tab_preview:
+            render_question_preview(preview_md, height=520)
+        with tab_raw:
+            st.code(new_content[:10000], language="markdown")
+        with tab_guide:
+            syntax_help_panel()
 
-    # save logic
+    # Save logic
     if save_button:
         target_name = (
             save_name.strip()
             or display_name
             or (f"question_{datetime.now(tz=timezone.utc).strftime('%Y%m%d%H%M%S')}.md")
         )
-        target_path = Path(target_name) if target_name else None
-        if target_path and not target_path.is_absolute():
+        target_path = Path(target_name)
+        if not target_path.is_absolute():
             target_path = questions_root / target_path
-        # if user requested overwrite and provided a server-side path
+
         saved = False
         save_errors = []
-        if overwrite and file_path:
+        if overwrite and file_path and str(target_path) == display_name:
             try:
                 with open(display_name, "w", encoding="utf-8") as f:
                     f.write(new_content)
                 saved = True
-                st.success(f"Overwrote file: {display_name}")
+                st.success(f"✅ Successfully updated file: `{display_name}`")
             except Exception as e:
-                save_errors.append(f"Could not overwrite {display_name}: {e}")
-        # else attempt to save to the selected path
-        if not saved and target_path:
+                save_errors.append(f"Could not write to {display_name}: {e}")
+        else:
             try:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(target_path, "w", encoding="utf-8") as f:
                     f.write(new_content)
                 saved = True
-                st.success(f"Saved to: {target_path}")
+                st.success(f"✅ Saved new file: `{target_path}`")
             except Exception as e:
                 save_errors.append(f"Could not save to {target_path}: {e}")
 
+        if saved:
+            actual_saved_path = target_path
+            try:
+                upsert_question(
+                    {
+                        "meta": final_meta,
+                        "question_text": final_question,
+                        "options": final_options,
+                        "solution": final_solution,
+                        "body": final_question,
+                    },
+                    file_path=actual_saved_path,
+                    qdir=questions_root,
+                )
+                st.info("🔄 SQLite search index automatically synchronized.")
+            except Exception as e_idx:
+                logger.warning(f"Could not update index for {actual_saved_path}: {e_idx}")
+
         if not saved:
-            # provide as download
             b = new_content.encode("utf-8")
-            st.download_button("Download updated file", data=b, file_name=target_name, mime="text/plain")
-            if save_errors:
-                for e in save_errors:
-                    st.error(e)
-            else:
-                st.info("No writable path specified; use the download button above to get the updated file.")
-
-    else:
-        # quick download if user wants
-        st.download_button(
-            "Download current preview",
-            data=new_content.encode("utf-8"),
-            file_name=(save_name or display_name or "question.md"),
-            mime="text/plain",
-        )
-
+            st.download_button("📥 Download Updated File", data=b, file_name=target_path.name, mime="text/plain")
+            for e in save_errors:
+                st.error(e)
 else:
     st.stop()
-
-# ----------------- End -----------------
