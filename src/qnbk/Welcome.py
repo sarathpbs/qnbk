@@ -1,6 +1,5 @@
 """Operational Dashboard and Introduction to Question Bank (qnbk)."""
 
-from qnbk.utils import is_chemistry_mode
 
 from pathlib import Path
 import streamlit as st
@@ -221,11 +220,9 @@ def main() -> None:
             Differentiate using power rule: \\(f'(x) = 2x\\).
             ```
 
-            ### Math and Chemistry Notation
+            ### Math Notation
             * **Inline Math**: `\\( ... \\)` or `$ ... $`
             * **Display Math**: `\\[ ... \\]` or `$$ ... $$`
-            * **Chemistry Formulas**: `\\ce{H2SO4}`, `\\ce{2H2 + O2 -> 2H2O}`
-            * **Chemical Structures**: `\\chemfig{*6(-=-=-=)}`
             """
         )
 

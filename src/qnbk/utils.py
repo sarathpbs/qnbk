@@ -200,8 +200,7 @@ def render_standard_preview(markdown_content: str, height: int = 400):
 
 
 def render_question_preview(markdown_content: str, height: int = 400):
-    """Renders question preview; uses MathJax+mhchem if chemistry mode is enabled,
-    otherwise renders standard LaTeX markdown."""
+    """Renders question preview using standard LaTeX markdown."""
     render_standard_preview(markdown_content, height=height)
 
 
@@ -248,11 +247,8 @@ def math_help_panel():
 
 
 def syntax_help_panel():
-    """Renders the appropriate writing guide based on whether Chemistry mode is enabled."""
-    if is_chemistry_mode():
-        chemistry_help_panel()
-    else:
-        math_help_panel()
+    """Renders a collapsible LaTeX writing guide with copy-pasteable math snippets."""
+    math_help_panel()
 
 
 # Minimal LaTeX-escaping (keeps common math delimiters intact)

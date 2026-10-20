@@ -21,7 +21,6 @@ from qnbk.utils import (
     escape_latex,
     md_to_latex_minimal,
     question_to_latex,
-    render_chemistry_toggle,
     render_question_preview,
     write_md_file,
 )
@@ -216,7 +215,6 @@ questions = load_all_questions(str(QUESTIONS_DIR))
 # Sidebar Filters & Configuration
 # ---------------------------
 with st.sidebar:
-    render_chemistry_toggle()
     st.write("---")
     st.header("🎯 Filter Question Bank")
 
