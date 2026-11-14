@@ -4,11 +4,14 @@
         {
             "label": "Create Next Question",
             "type": "process",
-            "command": "wsl",
+            "command": "C:\\Windows\\System32\\wsl.exe",
             "args": [
-                "bash",
-                "-c",
-                "python3 .vscode/create_next_q.py '${file}'"
+                "-d",
+                "Ubuntu",
+                "-e",
+                "/bin/bash",
+                "-lc",
+                "cd /home/ranga/qnbk && python3 .vscode/create_next_q.py '${file}'"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -25,11 +28,14 @@
         {
             "label": "Preview Question in LaTeX",
             "type": "process",
-            "command": "wsl",
+            "command": "C:\\Windows\\System32\\wsl.exe",
             "args": [
-                "bash",
-                "-c",
-                "poetry run python3 .vscode/preview_question.py '${file}'"
+                "-d",
+                "Ubuntu",
+                "-e",
+                "/bin/bash",
+                "-lc",
+                "cd /home/ranga/qnbk && poetry run python3 .vscode/preview_question.py '${file}'"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
