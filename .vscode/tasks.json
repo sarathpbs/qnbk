@@ -3,17 +3,41 @@
     "tasks": [
         {
             "label": "Create Next Question",
-            "type": "shell",
+            "type": "process",
             "command": "wsl",
             "args": [
-                "python3",
-                ".vscode/create_next_q.py",
-                "${file}"
+                "bash",
+                "-c",
+                "python3 .vscode/create_next_q.py '${file}'"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
             "group": "none",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Preview Question in LaTeX",
+            "type": "process",
+            "command": "wsl",
+            "args": [
+                "bash",
+                "-c",
+                "poetry run python3 .vscode/preview_question.py '${file}'"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "presentation": {
                 "reveal": "silent",
                 "panel": "shared",

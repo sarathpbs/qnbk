@@ -145,6 +145,13 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
+# Aider chat and tag artifacts
+.aider*
+
+# LaTeX / exam artifacts
+*.aux
+test_mcexam.*
+
 # mkdocs documentation
 /site
 
