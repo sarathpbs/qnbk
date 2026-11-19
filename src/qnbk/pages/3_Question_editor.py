@@ -6,7 +6,8 @@ or to a new filename.
 
 Example input file:
 ---
-topic: Differentiation
+chapter: Differentiation
+topic: Unsorted
 difficulty: Easy
 answer:
 prev_year:

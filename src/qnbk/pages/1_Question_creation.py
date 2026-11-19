@@ -8,7 +8,7 @@ import streamlit as st
 from loguru import logger
 
 from qnbk import DEFAULT_QUESTIONS_DIR
-from qnbk.utils import write_md_file  # , render_chemistry_preview, chemistry_help_panel
+from qnbk.utils import write_md_file
 
 QUESTIONS_DIR = DEFAULT_QUESTIONS_DIR
 
@@ -37,7 +37,8 @@ def generate_id(directory: Path) -> str:
 
 
 def build_question_dict(
-    topic: str | Path,
+    chapter: str | Path,
+    topic: str,
     class_num: str,
     difficulty: str,
     prev_year: str,
@@ -50,7 +51,8 @@ def build_question_dict(
 ) -> dict:
     """Build a structured dictionary for the question, separating metadata and body content."""
     metadata = {
-        "topic": topic,
+        "chapter": chapter,
+        "topic": topic or "Unsorted",
         "class": class_num,
         "difficulty": difficulty or "",
         "answer": correct_option or "",
@@ -87,11 +89,13 @@ def main() -> None:
     output_dir_base = st.text_input("Output directory (relative to project root)", value=str(QUESTIONS_DIR))
 
     st.subheader("Question metadata")
-    topic = st.text_input("Topic (e.g. algebra, geometry)", value="")
-    topic = topic.strip().capitalize() if topic else ""
-    class_num = st.selectbox("Class", ["XII", "XI", "X", "IX", "VIII"], index=0)
+    class_options = ["XII", "XI", "X", "IX"]
+    class_num = st.selectbox("Class", class_options)
+    chapter = st.text_input("Chapter (e.g. algebra, geometry)", value="")
+    topic = st.text_input("Topic", value="").strip().lower()
+    chapter = chapter.strip().capitalize() if chapter else ""
 
-    resolved_output_dir = Path(output_dir_base.strip()) / f"Class-{class_num}" / topic
+    resolved_output_dir = Path(output_dir_base.strip()) / f"Class-{class_num}" / chapter
 
     difficulty_options = ["", "Easy", "Medium", "Hard"]
     difficulty = st.selectbox("Difficulty", difficulty_options, index=0)
@@ -145,6 +149,7 @@ def main() -> None:
                 return
 
         qdict = build_question_dict(
+            chapter=chapter,
             topic=topic,
             class_num=class_num,
             difficulty=difficulty,

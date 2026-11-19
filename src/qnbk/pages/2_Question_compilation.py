@@ -218,6 +218,9 @@ def question_to_latex(q: dict, include_options: bool = True) -> tuple[str, str]:
     has_display_math = any(("$$" in s or r"\[" in s or r"\begin{" in s) for s in options.values())
     total_len = sum(len(s) for s in options.values())
     use_horizontal = (not has_display_math) and (total_len <= H_THRESH) and all(s.strip() for s in options.values())
+    use_single_line = (
+        (not has_display_math) and (total_len <= H_THRESH / 1.5) and all(s.strip() for s in options.values())
+    )
 
     s = []
     # question as an item in top-level enumerate (caller/template handles outer enumerate)
@@ -245,6 +248,12 @@ def question_to_latex(q: dict, include_options: bool = True) -> tuple[str, str]:
             temp_text = "\\begin{tabular}{p{0.48\\textwidth} p{0.48\\textwidth}}\n"
             temp_text = temp_text if include_options else "%% " + temp_text
             mc_text += temp_text
+        elif use_single_line:
+            temp_text = (
+                "\\begin{tabular}{p{0.24\\textwidth} p{0.24\\textwidth} p{0.24\\textwidth} p{0.24\\textwidth}}\n"
+            )
+            temp_text = temp_text if include_options else "%% " + temp_text
+            mc_text += temp_text
         for opt_num, (flag, letter) in enumerate(zip(flags, opt_order, strict=False)):
             body = opt_texts[letter]
             # ensure each argument is TeX safe (already escaped)
@@ -259,10 +268,10 @@ def question_to_latex(q: dict, include_options: bool = True) -> tuple[str, str]:
                 temp_text = temp_text if include_options else "%% " + temp_text
                 mc_text += temp_text
             if use_horizontal and opt_num % 2 == 0:
-                mc_text += " & "
+                mc_text += " & \n"
             else:
                 mc_text += " \\\\\n"
-        if use_horizontal:
+        if use_horizontal or use_single_line:
             temp_text = "\\end{tabular}\n"
             temp_text = temp_text if include_options else "%% " + temp_text
             mc_text += temp_text
@@ -404,10 +413,10 @@ with st.sidebar:
     # Filter questions to only those whose class is in the selected classes
     class_filtered_questions = [q for q in questions if (q["meta"].get("class") or "None") in selected_classes]
 
-    all_topics = sorted({q["meta"].get("topic") or "Uncategorized" for q in class_filtered_questions})
+    all_chapters = sorted({q["meta"].get("chapter") or "Uncategorized" for q in class_filtered_questions})
     all_difficulties = sorted({q["meta"].get("difficulty") or "Unknown" for q in class_filtered_questions})
 
-    selected_topics = st.multiselect("Topic(s)", all_topics, default=all_topics)
+    selected_chapters = st.multiselect("chapter(s)", all_chapters, default=all_chapters)
     selected_difficulties = st.multiselect("Difficulty level(s)", all_difficulties, default=all_difficulties)
 
     question_type_filter = st.radio(
@@ -487,14 +496,14 @@ with st.sidebar:
     st.write("---")
     st.write(
         f"Tip: put question files under `{QUESTIONS_DIR}` with YAML frontmatter: "
-        f"class, topic, difficulty, answer (solution goes in the body)."
+        f"class, chapter, difficulty, answer (solution goes in the body)."
     )
 
 # Filter questions
 filtered = []
 
 for q in class_filtered_questions:
-    if q["meta"].get("topic") not in selected_topics:
+    if q["meta"].get("chapter") not in selected_chapters:
         continue
     if q["meta"].get("difficulty") not in selected_difficulties:
         continue
